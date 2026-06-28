@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Add the roman-os pacman repo to /etc/pacman.conf — idempotently.
+# Why: a plain append created a second [roman-os_repo] section whenever this ran on a
+# system that already had it (e.g. baked into the ISO), and pacman then fails with
+# "could not register 'roman-os_repo' database (database already registered)". Guarding
+# on the section header makes a duplicate impossible no matter how often it runs.
+
+if grep -q '^\[roman-os_repo\]' /etc/pacman.conf; then
+    echo "roman-os_repo already present in /etc/pacman.conf — nothing to add"
+else
+    printf '\n[roman-os_repo]\nServer = https://roman-osdubes.github.io/$repo/$arch\n' \
+        | sudo tee --append /etc/pacman.conf >/dev/null
+    echo "roman-os_repo added to /etc/pacman.conf"
+fi
+
+sudo pacman -Syyu

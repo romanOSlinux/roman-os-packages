@@ -1,0 +1,21 @@
+# Maintainer: Roman <romanOSlinux>
+pkgname=roman-os-calamares-config
+pkgver=1.0
+pkgrel=1
+pkgdesc="Configuración y branding para el instalador Calamares en roman-os"
+arch=('any')
+url="https://github.com/romanOSlinux/roman-os-packages"
+license=('GPL3')
+provides=('kiro-calamares-config')
+conflicts=('kiro-calamares-config')
+depends=('calamares')
+source=()
+sha256sums=()
+
+package() {
+    cd "$srcdir/.."
+    
+    # Copiamos todo el contenido excepto los archivos de GitHub y utilidades no necesarias
+    cp -r etc "$pkgdir/" 2>/dev/null || true
+    cp -r usr "$pkgdir/" 2>/dev/null || true
+}

@@ -1,0 +1,5 @@
+name: "roman-os_remove_nvidia"
+type: "job"
+interface: "python"
+script: "main.py"
+noconfig: true

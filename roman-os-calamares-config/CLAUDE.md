@@ -1,0 +1,141 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Repository Role
+
+**PRODUCTION** — this is the stable Calamares installer config, paired with `roman-os-iso`.
+
+| Repo                         | Role                                                     | ISO repo        |
+|------------------------------|----------------------------------------------------------|-----------------|
+| `roman-os-calamares-config`      | **Production** — stable, released to users               | `roman-os-iso`      |
+| `roman-os-calamares-config-next` | **Beta/Testing** — experimental changes under evaluation | `roman-os-iso-next` |
+
+Do not apply untested changes here. Validate in `roman-os-calamares-config-next` first.
+
+Current kernels: **linux-cachyos** (default boot) + **linux-zen** (fallback). The installer is **kernel-agnostic** — the `roman-os_kernel` module detects every `vmlinuz-*` on the live medium, copies each to the target, generates a matching `mkinitcpio` preset, and removes the live-only preset artifacts (`roman-os`, `linux.preset`). No kernel name is hardcoded in the config, so the ISO's kernel can change with zero edits here.
+
+## What This Is
+
+Calamares installer configuration for the roman-os Linux distribution (Arch-based). Contains the full installation pipeline: module configs, custom Python extension modules, branding/QML slideshow, bundled microcode packages, and a custom Calamares PKGBUILD.
+
+Part of the broader roman-os ecosystem:
+- **roman-os-pkgbuild** — upstream Calamares fork source (PKGBUILD edited there, not here)
+- **roman-os-iso** — ISO build scripts (sibling repo)
+- **roman-os-repo** — custom pacman repository at `https://roman-osdubes.github.io/$repo/$arch`
+
+## Common Commands
+
+```bash
+# Commit and push all local changes
+./up.sh
+
+# First-time git remote setup (SSH alias git@github.com-edu)
+./setup.sh
+
+# Build Calamares (inside pkgbuild dir):
+cd etc/calamares/pkgbuild && makepkg -si
+
+# Run tests for the packages module:
+cd etc/calamares/pkgbuild/modules/packages/tests && python -m pytest
+
+# Run tests for the bootloader module:
+cd etc/calamares/pkgbuild/modules/bootloader/tests && python -m pytest
+```
+
+There is no linter configured for this repo. The Python modules in `usr/lib/calamares/modules/` run inside a Calamares chroot at install time — they cannot be run standalone.
+
+`up.sh` does: clean `__pycache__`, verify git remote is configured (runs `setup.sh` if not), `git pull`, then commit + push all changes. **Do not edit `etc/calamares/pkgbuild/PKGBUILD` here** — it must be edited in `~/KIRO/roman-os-pkgbuild/` and copied manually.
+
+## Installer Pipeline Architecture
+
+**Entry point:** [etc/calamares/settings.conf](etc/calamares/settings.conf) — defines the full execution sequence.
+
+**Show phase** (UI pages shown to user):
+`welcome → locale → keyboard → partition → users → summary`
+
+**Exec phase** (automated steps, in order):
+```
+partition → mount
+→ unpackfs@rootfs → roman-os_kernel
+→ machineid → locale → keyboard → localecfg
+→ luksbootkeyfile → luksopenswaphookcfg
+→ fstab → networkcfg
+→ roman-os_before → roman-os_remove_nvidia → chwd
+→ initcpiocfg → initcpio → hwclock
+→ services-systemd → roman-os_packages
+→ removeuser → users → roman-os_displaymanager
+→ roman-os_ucode → grubcfg → roman-os_bootloader
+→ roman-os_final → preservefiles → umount
+```
+
+**Finish phase:** `finished` page.
+
+`unpackfs` runs as a single named instance `rootfs` (see `instances:` block in settings.conf), using `unpackfs1.conf`. Kernel copying is handled by the custom `roman-os_kernel` module (no separate `vmlinuz` unpack step); package install/removal by `roman-os_packages` (no stock `packages@choice` instance); display-manager and bootloader setup by `roman-os_displaymanager` / `roman-os_bootloader` (replacing the stock `displaymanager` / `bootloader` modules).
+
+## Custom Python Modules
+
+These live in [usr/lib/calamares/modules/](usr/lib/calamares/modules/). Each has a `main.py` and `module.desc`.
+
+**Return convention:** all functions return `None` on success or a `(error_title, error_description)` tuple on failure. The `run()` entrypoint aggregates these. Non-fatal errors log via `libcalamares.utils.warning()` and do not abort the install.
+
+| Module               | Position in exec     | Purpose                                                                                                          |
+|----------------------|----------------------|------------------------------------------------------------------------------------------------------------------|
+| `roman-os_kernel`        | After unpackfs@rootfs | Detects every `vmlinuz-*` on the live medium, copies each to the target, generates a matching `mkinitcpio` preset, removes live-only preset artifacts (replaces the old `unpackfs@vmlinuz` step) |
+| `roman-os_before`        | After networkcfg     | Pacman lock wait, keyring init, mkinitcpio preset rename (`roman-os` → `linux.preset`), makepkg optimization         |
+| `roman-os_remove_nvidia` | After roman-os_before    | Reads `driver=` kernel param; removes NVIDIA on `free` + `nonfreechwd`, keeps the baked `nvidia-open-dkms` on `nonfree` |
+| `chwd`               | After roman-os_remove_nvidia | Runs `chwd --autoconfigure` **only** on `driver=nonfreechwd`; picks the right driver for the detected GPU      |
+| `roman-os_packages`      | After services-systemd | Installs the package selection, then removes installer-only packages post-install (replaces stock `packages@choice`) |
+| `roman-os_displaymanager`| After users          | Configures the display manager and default session (replaces stock `displaymanager`)                            |
+| `roman-os_ucode`         | After roman-os_displaymanager | Detects CPU (AMD/Intel via hwinfo), installs bundled `.pkg.tar.zst` from `/etc/calamares/packages/`         |
+| `roman-os_bootloader`    | After grubcfg        | Installs the bootloader — systemd-boot on UEFI, `grub-install --target=i386-pc` + `grub-mkconfig` on BIOS (replaces stock `bootloader`) |
+| `roman-os_final`         | Before preservefiles | Permissions, skel copy, live-only file cleanup, env config, bootloader cleanup, VM package removal, self-removal |
+
+### NVIDIA driver modes (`driver=` kernel cmdline)
+`kernel_cmdline("driver", default="free")`. Three modes drive `roman-os_remove_nvidia` + `chwd` (packages checked: `nvidia-open-dkms`, `nvidia-utils`, `nvidia-settings`):
+- **`free`** (default) — `roman-os_remove_nvidia` removes the NVIDIA packages; chwd skipped → mesa / open stack.
+- **`nonfree`** — both modules skip; the baked `nvidia-open-dkms` is kept untouched (proven express lane for modern Turing+ GPUs).
+- **`nonfreechwd`** — `roman-os_remove_nvidia` removes the baked NVIDIA packages first (clean slate), then `chwd --autoconfigure` installs exactly the profile it detects (any card) with nothing to conflict.
+
+### VM Detection (roman-os_final)
+Uses `systemd-detect-virt` and removes packages for VMs you are **not** running in. The set-based logic:
+
+| Detected VM           | VMware tools removed? | QEMU agent removed? | VirtualBox utils removed? |
+|-----------------------|-----------------------|---------------------|---------------------------|
+| `none` (bare metal)   | yes                   | yes                 | yes                       |
+| `vmware`              | yes                   | yes                 | yes                       |
+| `oracle` (VirtualBox) | yes                   | yes                 | no                        |
+| `kvm`                 | yes                   | no                  | yes                       |
+| `qemu`                | no                    | no                  | no                        |
+
+## Module Configs
+
+All in [etc/calamares/modules/](etc/calamares/modules/). Key non-obvious settings:
+
+- **partition.conf** — EFI min 2GB, swap as file (no partition), LUKS v2 (grub unlocks LUKS2/Argon2id via GRUB 2.14), `defaultPartitionTableType` empty so Calamares auto-picks gpt on UEFI / msdos on BIOS, auto-partitioning disabled
+- **unpackfs1.conf / unpackfs2.conf** — two separate unpack steps (rootfs + kernel), with different weights (45 vs 5)
+- **roman-os_packages.conf** — removes `calamares`, `roman-os-calamares-tweak-tool`, `mkinitcpio-archiso`, `memtest86+`, `memtest86+-efi` after install; `skip_if_no_internet: false`
+
+## Branding
+
+[etc/calamares/branding/roman-os/](etc/calamares/branding/roman-os/) — dark theme, 1200×800 window, sidebar widget layout.
+
+**Slideshow:** `show.qml` (QML API v2) cycles through `01cal.jpg`–`12cal.jpg`. To add/remove slides, edit both the QML and the image files. `show-backup.qml` is a fallback copy.
+
+**Translations:** Qt `.ts` format in `lang/` — en, fr, nl, ar, eo.
+
+## Microcode Bundling
+
+Pre-downloaded `.pkg.tar.zst` files in [etc/calamares/packages/](etc/calamares/packages/) allow offline microcode installation. The `roman-os_ucode` module finds them with `glob` on `/etc/calamares/packages/<vendor>-ucode-*.pkg.tar.zst` and installs via `pacman -U`.
+
+When updating microcode: download the new package into `etc/calamares/packages/`, remove the old `.pkg.tar.zst` and `.sig` files, then commit.
+
+## PKGBUILD Notes
+
+[etc/calamares/pkgbuild/PKGBUILD](etc/calamares/pkgbuild/PKGBUILD) tracks a git snapshot of a Calamares fork on Codeberg (`https://codeberg.org/erikdubois/calamares`). It:
+- conflicts with `calamares` and `calamares-git`
+- provides `calamares-next`
+- applies two patches in `prepare()`: enables config file installation (`"Install configuration files" OFF` → `ON`), increases fstab `desired_size` to 8589MiB (512×1024×1024×16)
+- bundles the custom modules from `pkgbuild/modules/` (bootloader + packages overrides copied into the Calamares source tree)
+
+**Do not edit the local PKGBUILD** — edit `~/KIRO/roman-os-pkgbuild/` instead and copy manually.

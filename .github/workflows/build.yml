@@ -42,8 +42,10 @@ jobs:
 
       - name: Generate Repository Database
         run: |
-          cd x86_64
-          if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
+          mkdir -p deploy/x86_64
+          if ls x86_64/*.pkg.tar.zst 1> /dev/null 2>&1; then
+            mv x86_64/*.pkg.tar.zst deploy/x86_64/
+            cd deploy/x86_64
             repo-add roman-os-packages.db.tar.gz *.pkg.tar.zst
           else
             echo "No packages built!"
@@ -54,5 +56,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./x86_64
+          publish_dir: ./deploy
           publish_branch: gh-pages

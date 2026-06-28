@@ -1,0 +1,10 @@
+post_install() {
+    # Sobrescribir el .bashrc por defecto de Arch (del paquete 'bash')
+    if [ -f /etc/skel/.bashrc.roman-os ]; then
+        cp -f /etc/skel/.bashrc.roman-os /etc/skel/.bashrc
+    fi
+}
+
+post_upgrade() {
+    post_install
+}

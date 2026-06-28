@@ -1,0 +1,58 @@
+name: Build and Deploy Arch Repo
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize Arch Build Environment
+        run: |
+          pacman -Syu --noconfirm base-devel git sudo
+          # Create a non-root builder user for makepkg
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          chown -R builder:builder .
+
+      - name: Build Packages
+        run: |
+          mkdir -p x86_64
+          # Find all directories containing a PKGBUILD and build them
+          for dir in */; do
+            if [ -f "$dir/PKGBUILD" ]; then
+              echo "Building package in $dir"
+              cd "$dir"
+              # Fix permissions for source files
+              chown -R builder:builder .
+              # Build as builder user
+              sudo -u builder makepkg -s --noconfirm
+              mv *.pkg.tar.zst ../x86_64/ || true
+              cd ..
+            fi
+          done
+
+      - name: Generate Repository Database
+        run: |
+          cd x86_64
+          if ls *.pkg.tar.zst 1> /dev/null 2>&1; then
+            repo-add roman-os-packages.db.tar.gz *.pkg.tar.zst
+          else
+            echo "No packages built!"
+            exit 1
+          fi
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./x86_64
+          publish_branch: gh-pages

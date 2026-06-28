@@ -1,0 +1,14 @@
+# Maintainer: Roman <romanOSlinux>
+pkgname=roman-os-mirrorlist
+pkgver=1.0
+pkgrel=1
+pkgdesc="roman-os repository mirrorlist"
+arch=('any')
+url="https://github.com/romanOSlinux/roman-os-packages"
+license=('GPL')
+source=('roman-os-mirrorlist')
+sha256sums=('SKIP')
+
+package() {
+    install -Dm644 "$srcdir/roman-os-mirrorlist" "$pkgdir/etc/pacman.d/roman-os-mirrorlist"
+}

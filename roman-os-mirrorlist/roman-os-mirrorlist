@@ -1,0 +1,4 @@
+##
+## roman-os repository mirrorlist
+##
+Server = https://romanOSlinux.github.io/roman-os-packages/$arch

@@ -34,7 +34,7 @@ jobs:
               # Fix permissions for source files
               chown -R builder:builder .
               # Build as builder user
-              sudo -u builder makepkg -s --noconfirm
+              sudo -u builder makepkg -d --noconfirm
               mv *.pkg.tar.zst ../x86_64/ || true
               cd ..
             fi

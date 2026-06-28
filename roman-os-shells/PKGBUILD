@@ -8,9 +8,10 @@ url="https://github.com/romanOSlinux/roman-os-packages"
 license=('GPL3')
 provides=('kiro-shells')
 conflicts=('kiro-shells')
-source=('etc/skel/.bashrc')
-sha256sums=('SKIP')
+source=()
+sha256sums=()
 
 package() {
-    install -Dm644 "$srcdir/.bashrc" "$pkgdir/etc/skel/.bashrc"
+    cd "$srcdir/.."
+    install -Dm644 etc/skel/.bashrc "$pkgdir/etc/skel/.bashrc"
 }

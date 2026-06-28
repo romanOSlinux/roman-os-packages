@@ -18,7 +18,7 @@ Este documento registra de forma detallada la migración de los paquetes de infr
 | 2 | `kiro-keyring` | `roman-os-keyring` | Seguridad / Claves GPG para firmar paquetes | *Pendiente* | Necesario si decidimos firmar los paquetes con GPG. |
 | 3 | `kiro-calamares-config`| `roman-os-calamares-config`| Instalador / Diapositivas, branding y configuración de Calamares | *Pendiente* | **Crítico**. Es el que le da la identidad visual al instalador. |
 | 4 | `kiro-grub-theme` | `roman-os-grub-theme` | Arranque / Tema del cargador de arranque GRUB | *Pendiente* | **Visual**. Cambia el logo de inicio al arrancar la ISO. |
-| 5 | `kiro-system-files` | `roman-os-system-files` | Configuración / Archivos base de configuración del sistema | *Pendiente* | Contiene atajos de terminal, alias globales, etc. |
+| 5 | `kiro-system-files` | `roman-os-system-files` | Configuración / Archivos base de configuración del sistema | **Completado** | Clonado, renombrados los scripts internos (de kiro a roman-os) y limpiado dependencias. |
 | 6 | `kiro-shells` | `roman-os-shells` | Configuración / `.bashrc` y configuraciones de terminales | **Completado** | Elimina la dependencia del `wget` externo que rompía la compilación. |
 | 7 | `kiro-xfce` | `roman-os-xfce` | Entorno / Configuración por defecto del escritorio XFCE | *Pendiente* | **Crítico** para la versión Minimal (que usa XFCE). |
 | 8 | `kiro-dot-files` | `roman-os-dot-files` | Personalización / Archivos de configuración de usuario (dotfiles) | *Pendiente* | Configura el look & feel por defecto del usuario. |

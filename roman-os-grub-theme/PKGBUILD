@@ -1,0 +1,19 @@
+# Maintainer: Roman <romanOSlinux>
+pkgname=roman-os-grub-theme
+pkgver=1.0
+pkgrel=1
+pkgdesc="Tema GRUB minimalista por defecto para roman-os"
+arch=('any')
+url="https://github.com/romanOSlinux/roman-os-packages"
+license=('GPL3')
+provides=('kiro-grub-theme')
+conflicts=('kiro-grub-theme')
+depends=('grub')
+source=()
+sha256sums=()
+
+package() {
+    cd "$srcdir/.."
+    mkdir -p "$pkgdir/usr/share/grub/themes"
+    cp -r usr/share/grub/themes/roman-os "$pkgdir/usr/share/grub/themes/"
+}

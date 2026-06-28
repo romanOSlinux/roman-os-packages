@@ -1,0 +1,16 @@
+# Maintainer: Roman <romanOSlinux>
+pkgname=roman-os-shells
+pkgver=1.0
+pkgrel=1
+pkgdesc="Configuración de shell (bash) para roman-os — instala .bashrc por defecto en /etc/skel"
+arch=('any')
+url="https://github.com/romanOSlinux/roman-os-packages"
+license=('GPL3')
+provides=('kiro-shells')
+conflicts=('kiro-shells')
+source=('etc/skel/.bashrc')
+sha256sums=('SKIP')
+
+package() {
+    install -Dm644 "$srcdir/.bashrc" "$pkgdir/etc/skel/.bashrc"
+}

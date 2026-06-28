@@ -1,0 +1,7 @@
+# Kiro default settings — onboard on-screen keyboard.
+# Sets the default theme to "Kiro Azure" (shipped in this package under
+# /usr/share/onboard/themes/). Compiled into gschemas.compiled by the glib2
+# pacman hook at install time. This sets only the DEFAULT: a user who picks a
+# different theme in onboard's settings keeps their own choice.
+[org.onboard]
+theme='/usr/share/onboard/themes/Kiro Azure.theme'

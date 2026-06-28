@@ -1,0 +1,375 @@
+#!/bin/bash
+set -euo pipefail
+#####################################################################
+# Author    : Erik Dubois
+# Website   : https://kiroproject.be
+#####################################################################
+#
+#   DO NOT JUST RUN THIS. EXAMINE AND JUDGE. RUN AT YOUR OWN RISK.
+#
+#   Purpose:
+#   Summarise the Calamares installer log (/var/log/Calamares.log) into
+#   a short, readable report instead of a 1600-line raw dump: the install
+#   header (version, branding, target disk, user, host), the 43-job
+#   install timeline with per-job duration (Kiro modules highlighted),
+#   the real WARNINGs (benign Qt/chcon/EFI-probe noise filtered out),
+#   any ERRORs / Python tracebacks, and a one-line CLEAN / FAILED verdict.
+#   Only the last install session in the log is parsed. The summary can
+#   be printed, saved to a file (--save), or uploaded to a paste host
+#   (--upload, which forces --scrub so no host/user/IP leaves the box).
+#
+#   Why: pairs with kiro-audit for post-install triage and community
+#   support — a user can run one command and share what the installer
+#   actually did, without hand-reading the raw log or leaking their box.
+#
+#####################################################################
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+VERSION="1.0.0"
+LOG_FILE="/var/log/Calamares.log"
+PASTE_SERVICE="https://paste.c-net.org"   # raw POST body (--data-binary @-) → returns the paste URL; swap for your own host
+# 0x0.st was dropped: it is blanket-blocked as a malware/abuse-hosting domain by
+# threat-intel blocklists (ISP filters like Telenet Safesurf/SAM, Bitdefender, etc.),
+# so --upload failed for most users regardless of network. paste.c-net.org is not flagged.
+
+#####################################################################
+# Colors
+#####################################################################
+if command -v tput >/dev/null 2>&1 && [[ -t 1 ]]; then
+    RED="$(tput setaf 1)"
+    GREEN="$(tput setaf 2)"
+    YELLOW="$(tput setaf 3)"
+    BLUE="$(tput setaf 4)"
+    CYAN="$(tput setaf 6)"
+    RESET="$(tput sgr0)"
+else
+    RED="" GREEN="" YELLOW="" BLUE="" CYAN="" RESET=""
+fi
+
+#####################################################################
+# Logging
+#####################################################################
+log_section() {
+    echo
+    echo "${GREEN}############################################################################${RESET}"
+    echo "$1"
+    echo "${GREEN}############################################################################${RESET}"
+    echo
+}
+
+log_info() {
+    echo
+    echo "${BLUE}############################################################################${RESET}"
+    echo "$1"
+    echo "${BLUE}############################################################################${RESET}"
+    echo
+}
+
+log_warn() {
+    echo
+    echo "${YELLOW}############################################################################${RESET}"
+    echo "$1"
+    echo "${YELLOW}############################################################################${RESET}"
+    echo
+}
+
+log_error() {
+    echo
+    echo "${RED}############################################################################${RESET}"
+    echo "$1"
+    echo "${RED}############################################################################${RESET}"
+    echo
+}
+
+log_success() {
+    echo
+    echo "${GREEN}############################################################################${RESET}"
+    echo "$1"
+    echo "${GREEN}############################################################################${RESET}"
+    echo
+}
+
+#####################################################################
+# Error handling
+#####################################################################
+on_error() {
+    local lineno="$1"
+    local cmd="$2"
+    echo
+    echo "${RED}ERROR on line ${lineno}: ${cmd}${RESET}"
+    echo
+    sleep 10
+}
+
+trap 'on_error "$LINENO" "$BASH_COMMAND"' ERR
+
+#####################################################################
+# Options
+#####################################################################
+FULL=false
+SCRUB=false
+SAVE_FILE=""
+UPLOAD=false
+
+usage() {
+    cat <<EOF
+kiro-calamares-log - summarise the Calamares installer log
+
+Usage:
+    kiro-calamares-log [--full] [--scrub] [--save [FILE]] [--upload]
+    kiro-calamares-log [--help] [--version]
+
+Options:
+    -h, --help        Show this help and exit
+    -v, --version     Show version and exit
+    -f, --full        Append the full raw log (including verbose [8] lines)
+        --scrub       Redact hostname, username and IPs to placeholders
+    -s, --save [FILE] Write the summary to FILE
+                      (default: ~/kiro-calamares-summary-<date>.txt)
+        --upload      Upload the summary to ${PASTE_SERVICE} and print the URL
+                      (implies --scrub — nothing identifying leaves the box)
+
+Reads ${LOG_FILE}. Only the last install session in the log is summarised.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)    usage; exit 0 ;;
+        -v|--version) echo "kiro-calamares-log ${VERSION}"; exit 0 ;;
+        -f|--full)    FULL=true ;;
+        --scrub)      SCRUB=true ;;
+        -s|--save)
+            if [[ -n "${2:-}" && "${2:0:1}" != "-" ]]; then
+                SAVE_FILE="$2"; shift
+            else
+                SAVE_FILE="${HOME}/kiro-calamares-summary-$(date +%Y%m%d-%H%M%S).txt"
+            fi
+            ;;
+        --upload)     UPLOAD=true; SCRUB=true ;;
+        *)            echo "${RED}Unknown option: $1${RESET}" >&2; usage; exit 1 ;;
+    esac
+    shift
+done
+
+#####################################################################
+# Functions
+#####################################################################
+
+# Slice out the last install session (last "=== START CALAMARES" → EOF).
+extract_last_session() {
+    local start
+    start="$(grep -n '=== START CALAMARES' "${LOG_FILE}" | tail -1 | cut -d: -f1)"
+    if [[ -z "${start}" ]]; then
+        cat "${LOG_FILE}"      # no marker — fall back to the whole file
+    else
+        tail -n "+${start}" "${LOG_FILE}"
+    fi
+}
+
+# Seconds-since-epoch for a "YYYY-MM-DD - HH:MM:SS" Calamares timestamp.
+ts_to_epoch() {
+    local d="${1%% - *}" t="${1##* - }"
+    date -d "${d} ${t}" +%s 2>/dev/null || echo 0
+}
+
+_field_after_job() {
+    # echo the quoted argument that follows a 'Starting job "<prefix>..."' line
+    grep -oE "Starting job \"$1[^\"]*\"" <<<"${SESSION}" | head -1 |
+        sed -E "s/Starting job \"$1//; s/\"$//"
+}
+
+print_header() {
+    local ver branding disk user host launch_ts run_ts
+    ver="$(grep -m1 'Calamares version:' <<<"${SESSION}" | sed -E 's/.*version: *//; s/ *$//')"
+    branding="$(grep -m1 'Loaded branding component' <<<"${SESSION}" | grep -oE '"[^"]+"' | tr -d '"')"
+    disk="$(grep -oE 'partition on /dev/[a-z]+' <<<"${SESSION}" | head -1 | grep -oE '/dev/[a-z]+')"
+    user="$(_field_after_job 'Create user ')"
+    host="$(_field_after_job 'Set hostname ')"
+    launch_ts="$(grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2} - [0-9:]+' <<<"${SESSION}" | head -1)"
+    run_ts="$(grep -E 'Starting job "' <<<"${SESSION}" | head -1 |
+              grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2} - [0-9:]+')"
+
+    log_section "Kiro — Calamares Install Summary"
+    echo "  Log        : ${LOG_FILE}"
+    echo "  Launched   : ${launch_ts:-unknown}"
+    echo "  Install ran: ${run_ts:-not started}"
+    echo "  Calamares  : ${ver:-unknown}"
+    echo "  Branding   : ${branding:-unknown}"
+    echo "  Target disk: ${disk:-unknown}"
+    if [[ "${SCRUB}" == true ]]; then
+        echo "  User       : <redacted>"
+        echo "  Hostname   : <redacted>"
+    else
+        echo "  User       : ${user:-unknown}"
+        echo "  Hostname   : ${host:-unknown}"
+    fi
+}
+
+print_timeline() {
+    log_section "Install timeline (per-job duration)"
+
+    # Kiro-specific modules get a marker so they stand out in the sequence.
+    local kiro_re='kiro_|chwd|unpackfs|packages|bootloader|grubcfg|initcpio|mkinitcpio'
+
+    mapfile -t jobs < <(grep -nE 'Starting job "' <<<"${SESSION}")
+    local total="" count=0
+    local prev_epoch="" prev_name="" prev_marker=""
+
+    _emit() {
+        local name="$1" epoch="$2" next_epoch="$3" marker="$4"
+        local dur="?"
+        [[ -n "${epoch}" && "${epoch}" != 0 && -n "${next_epoch}" && "${next_epoch}" != 0 ]] &&
+            dur="$((next_epoch - epoch))s"
+        printf "  %s%-42s%s %s\n" "${marker:+${CYAN}}" "${name}" "${marker:+${RESET}}" "${dur}"
+    }
+
+    for line in "${jobs[@]}"; do
+        local content="${line#*:}"
+        local ts name num marker=""
+        ts="$(grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2} - [0-9:]+' <<<"${content}")"
+        name="$(sed -E 's/.*Starting job "//; s/".*//' <<<"${content}")"
+        num="$(grep -oE '\( *[0-9]+ */ *[0-9]+ *\)' <<<"${content}" | tr -d ' ()')"
+        [[ -n "${num}" ]] && total="${num##*/}"
+        grep -qE "${kiro_re}" <<<"${name}" && marker="*"
+        local epoch; epoch="$(ts_to_epoch "${ts}")"
+        if [[ -n "${prev_name}" ]]; then
+            _emit "${prev_name}" "${prev_epoch}" "${epoch}" "${prev_marker}"
+        fi
+        prev_name="${name}"; prev_epoch="${epoch}"; prev_marker="${marker}"
+        count=$((count + 1))
+    done
+    # Last job: bound its duration with the final log timestamp.
+    if [[ -n "${prev_name}" ]]; then
+        local last_ts last_epoch
+        last_ts="$(grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2} - [0-9:]+' <<<"${SESSION}" | tail -1)"
+        last_epoch="$(ts_to_epoch "${last_ts}")"
+        _emit "${prev_name}" "${prev_epoch}" "${last_epoch}" "${prev_marker}"
+    fi
+
+    echo
+    echo "  ${count} job(s) run  (job ${total:-43}/${total:-43} is Calamares' internal finalize).  ${CYAN}*${RESET} = Kiro module"
+    JOBS_STARTED="${count}"
+    JOBS_TOTAL="${total:-0}"
+}
+
+# Benign log noise — cosmetic warnings that appear on a healthy install.
+BENIGN_RE='beginResetModel|endResetModel|QObject::setParent|QLayout|chcon|EFI but no EFI system partitions|no EFI system partitions found|Unknown GS key autoLoginUser|source write-protected|Unknown branding|No config file for "chwd"|Invalid osprober count|QSslSocket|device not open'
+
+print_warnings() {
+    log_section "Warnings"
+    # Only [2] lines that carry an actual WARNING token (drops the bare C++
+    # function-signature context lines Calamares prints at [2]), then filter
+    # the known-benign noise.
+    local warns
+    warns="$(grep -E '\[2\]:' <<<"${SESSION}" | grep -E 'WARNING' | grep -vE "${BENIGN_RE}" || true)"
+    if [[ -z "${warns}" ]]; then
+        echo "  ${GREEN}None${RESET} (benign Qt/chcon/EFI-probe/branding noise filtered out)"
+        WARN_COUNT=0
+    else
+        WARN_COUNT="$(grep -c . <<<"${warns}")"
+        sed -E 's/^/  /' <<<"${warns}"
+    fi
+}
+
+print_errors() {
+    log_section "Errors / tracebacks"
+    local errs
+    errs="$(grep -E '\[1\]:|Traceback|\[PYTHON JOB\]: "[^"]*(FAIL|ERROR|[Ee]rror)|Job .* failed|chroot .* returned non-zero' <<<"${SESSION}" || true)"
+    if [[ -z "${errs}" ]]; then
+        echo "  ${GREEN}None${RESET}"
+        ERR_COUNT=0
+    else
+        ERR_COUNT="$(grep -c . <<<"${errs}")"
+        sed -E 's/^/  /' <<<"${errs}"
+    fi
+}
+
+print_verdict() {
+    # "Saving files for later" is Calamares' final job — present in every
+    # config — so reaching it means the install ran end to end.
+    local reached_end=false
+    grep -q 'Saving files for later' <<<"${SESSION}" && reached_end=true
+
+    if [[ "${ERR_COUNT}" -gt 0 ]]; then
+        log_error "VERDICT: INSTALL HAD ${ERR_COUNT} ERROR(S) — review the Errors section above"
+    elif [[ "${reached_end}" == true ]]; then
+        log_success "VERDICT: INSTALL CLEAN — ${JOBS_STARTED} jobs ran to the final job, 0 errors, ${WARN_COUNT} real warning(s)"
+    else
+        log_warn "VERDICT: INCOMPLETE — install did not reach the final job (may have been aborted)"
+    fi
+}
+
+scrub() {
+    # Redact host/user/IPs from a stream when --scrub is on; else pass through.
+    if [[ "${SCRUB}" != true ]]; then cat; return; fi
+    local user host
+    user="$(_field_after_job 'Create user ')"
+    host="$(_field_after_job 'Set hostname ')"
+    sed -E \
+        -e "s|/home/${user:-__no__}|/home/USER|g" \
+        -e "s/\b${host:-__nohost__}\b/HOST/g" \
+        -e "s/\b${user:-__nouser__}\b/USER/g" \
+        -e 's/\b([0-9]{1,3}\.){3}[0-9]{1,3}\b/<ip>/g'
+}
+
+render() {
+    print_header
+    print_timeline
+    print_warnings
+    print_errors
+    print_verdict
+    if [[ "${FULL}" == true ]]; then
+        log_info "Full raw session log"
+        echo "${SESSION}"
+    fi
+}
+
+#####################################################################
+# main
+#####################################################################
+main() {
+    if [[ ! -r "${LOG_FILE}" ]]; then
+        log_error "${LOG_FILE} not found or not readable. Run on an installed Kiro system."
+        exit 1
+    fi
+    SESSION="$(extract_last_session)"
+
+    # Build the report once (colorless when saving/uploading for clean text).
+    local report
+    if [[ -n "${SAVE_FILE}" || "${UPLOAD}" == true ]]; then
+        report="$(RED='' GREEN='' YELLOW='' BLUE='' CYAN='' RESET=''; render | scrub)"
+    else
+        report="$(render | scrub)"
+    fi
+
+    echo "${report}"
+
+    if [[ -n "${SAVE_FILE}" ]]; then
+        echo "${report}" >"${SAVE_FILE}"
+        log_success "Summary written to ${SAVE_FILE}"
+    fi
+
+    if [[ "${UPLOAD}" == true ]]; then
+        if ! command -v curl >/dev/null 2>&1; then
+            log_error "curl not installed — cannot upload."
+            exit 1
+        fi
+        local url err
+        err="$(mktemp)"
+        url="$(echo "${report}" | curl -fsS --data-binary @- "${PASTE_SERVICE}/" 2>"${err}" || true)"
+        if [[ -n "${url}" ]]; then
+            log_success "Uploaded (scrubbed) to: ${url}"
+            rm -f "${err}"
+        else
+            log_error "Upload to ${PASTE_SERVICE} failed: $(tr '\n' ' ' <"${err}")"
+            rm -f "${err}"
+            exit 1
+        fi
+    fi
+
+    log_success "$(basename "$0") done"
+}
+
+main "$@"

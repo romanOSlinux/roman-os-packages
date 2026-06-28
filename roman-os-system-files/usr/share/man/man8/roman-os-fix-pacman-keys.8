@@ -1,0 +1,101 @@
+.TH KIRO-FIX-PACMAN-KEYS 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-fix-pacman-keys \- fix pacman GPG keys and sync database
+.SH SYNOPSIS
+.B kiro-fix-pacman-keys
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-fix-pacman-keys
+repairs a broken pacman GPG keyring and stale sync database.
+It is useful when package operations fail with signature or database errors,
+typically after a long period without updating or after a clock skew event.
+.PP
+The script performs the following steps in order:
+.IP 1. 4
+If network connectivity is available, installs the latest
+.B archlinux-keyring
+package to ensure known-good keys are present before the keyring is rebuilt.
+.IP 2. 4
+Removes stale
+.B .db
+and
+.B .db.sig
+files from
+.IR /var/lib/pacman/sync/ .
+.IP 3. 4
+Wipes
+.I /etc/pacman.d/gnupg/
+and reinitialises it with
+.BR pacman-key\ --init .
+.IP 4. 4
+Repopulates the keyring with all officially trusted keys via
+.BR pacman-key\ --populate .
+.IP 5. 4
+Appends
+.B keyserver hkp://keyserver.ubuntu.com:80
+to
+.I /etc/pacman.d/gnupg/gpg.conf
+so key lookups fall back to a reliable public keyserver.
+.IP 6. 4
+Refreshes the pacman sync databases with
+.BR pacman\ -Sy .
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Print every command that would be executed without making any changes to the
+system.
+Useful for auditing the sequence of operations before running for real.
+.SH EXIT STATUS
+.TP
+.B 0
+All steps completed (or simulated in dry-run mode).
+.TP
+.B 1
+An unknown option was supplied.
+.SH FILES
+.TP
+.I /var/lib/pacman/sync/
+Pacman sync database directory.
+Stale \fB.db\fR and \fB.db.sig\fR files are removed from here.
+.TP
+.I /etc/pacman.d/gnupg/
+Pacman GPG keyring directory.
+Wiped and reinitialised by this script.
+.TP
+.I /etc/pacman.d/gnupg/gpg.conf
+GPG configuration for pacman.
+The Ubuntu keyserver line is appended here.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library providing logging, colour output, connectivity checks,
+and \fBexecute_or_dryrun\fR support.
+.SH EXAMPLES
+Preview all operations without making changes:
+.PP
+.RS 4
+.EX
+kiro-fix-pacman-keys --dry-run
+.EE
+.RE
+.PP
+Run the full repair:
+.PP
+.RS 4
+.EX
+kiro-fix-pacman-keys
+.EE
+.RE
+.SH SEE ALSO
+.BR pacman (8),
+.BR pacman-key (8),
+.BR gpg (1)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

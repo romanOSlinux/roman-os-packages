@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+
+<!-- Kiro Beacon color scheme. Amber keys with black labels on pure black —
+     one of the highest-readability combinations for low vision. Modifier
+     groups use white labels on dark amber to keep contrast above threshold. -->
+
+<color_scheme name="Kiro Beacon" format="2.1">
+    <window type="key-popup">
+        <color element="border" rgb="#ffb000" opacity="1.0"/>
+    </window>
+
+    <layer> <color element="background" rgb="#000000" opacity="1.0"/> </layer>
+    <layer> <color element="background" rgb="#0a0a0a" opacity="0.96"/> </layer>
+    <layer> <color element="background" rgb="#000000" opacity="0.96"/> </layer>
+
+    <key_group>
+        <color element="fill"   rgb="#ffb000"/>
+        <color element="stroke" rgb="#000000"/>
+        <color element="label"  rgb="#000000"/>
+        icon0
+
+        <key_group>
+            <color element="fill" rgb="#ffd166"/>
+            icon1, icon2
+        </key_group>
+
+        <key_group>
+            <color element="fill"  rgb="#663f00"/>
+            <color element="label" rgb="#ffffff"/>
+            icon3,
+            RCTL, LCTL, RALT, LALT, LWIN, CAPS,
+            LFSH, RTSH, NMLK, ESC
+        </key_group>
+
+        <key_group>
+            <color element="fill"  rgb="#4d2f00"/>
+            <color element="label" rgb="#ffffff"/>
+            MENU, RWIN, BKSP, TAB, RTRN,
+            KPDL, KPEN,
+            LEFT, RGHT, UP, DOWN, INS, DELE, HOME, END, PGUP, PGDN,
+            F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
+            Prnt, Pause, Scroll,
+            KPSU, KPDV KPAD, KPMU,
+            secondaryclick, middleclick, doubleclick, dragclick, hoverclick,
+            hide, showclick, move, layer,
+            quit
+        </key_group>
+
+        <key_group>
+            <color element="fill"  rgb="#8a5a00"/>
+            <color element="label" rgb="#ffffff"/>
+            m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15
+        </key_group>
+
+        <key_group>
+            <color element="fill"  rgb="#ff3b30"/>
+            <color element="label" rgb="#ffffff"/>
+            settings
+        </key_group>
+
+        <!-- word suggestions -->
+        <key_group>
+            <color element="fill"  rgb="#1a1200"/>
+            <color element="label" rgb="#ffd166"/>
+            wordlist, prediction
+        </key_group>
+    </key_group>
+</color_scheme>

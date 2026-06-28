@@ -1,0 +1,49 @@
+.TH KIRO-DIAG 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-diag \- display Kiro system diagnostic information
+.SH SYNOPSIS
+.B kiro-diag
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+.SH DESCRIPTION
+.B kiro-diag
+prints a concise system snapshot useful for quick diagnosis and bug reports.
+.PP
+Information displayed:
+.IP \(bu 4
+ISO version from
+.I /etc/dev-rel
+.IP \(bu 4
+Firmware type: BIOS or UEFI
+.IP \(bu 4
+Mounted block filesystems and their types
+.IP \(bu 4
+Active display manager (sddm, gdm, lightdm, lxdm, or ly)
+.IP \(bu 4
+Available X11 and Wayland session desktop files
+.IP \(bu 4
+Installed kernel modules under
+.I /usr/lib/modules
+.IP \(bu 4
+Running kernel version from
+.I /proc/version
+.IP \(bu 4
+NVIDIA driver status and installed NVIDIA packages
+.IP \(bu 4
+GRUB nvidia-drm.modeset flag (if GRUB is present)
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit (does not require root).
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit (does not require root).
+.SH NOTES
+Must be run as root:
+.B sudo kiro-diag
+.SH SEE ALSO
+.BR kiro-report (8),
+.BR kiro-audit (8),
+.BR kiro-verify (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

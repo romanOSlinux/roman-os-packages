@@ -1,0 +1,44 @@
+.TH KIRO-GET-NEMESIS 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-get-nemesis \- clone the arcolinux-nemesis repository to ~/DATA
+.SH SYNOPSIS
+.B kiro-get-nemesis
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-get-nemesis
+ensures
+.B git
+is installed, then clones
+.I https://github.com/erikdubois/arcolinux-nemesis
+into
+.IR ~/DATA/ .
+The directory is created if it does not exist.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+.SH FILES
+.TP
+.I ~/DATA/arcolinux-nemesis/
+Clone destination.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-get-nemesis --dry-run
+kiro-get-nemesis
+.EE
+.SH SEE ALSO
+.BR git (1),
+.BR pacman (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

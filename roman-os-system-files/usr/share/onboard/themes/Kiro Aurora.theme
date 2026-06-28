@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+
+<!-- Kiro Aurora — onboard theme. Part of the Kiro accessibility theme set.
+     Signature dark-slate keyboard with the blue->green Kiro brand hues. -->
+
+<theme format="1.3" name="Kiro Aurora">
+  <color_scheme>Kiro Aurora</color_scheme>
+  <background_gradient>3.0</background_gradient>
+  <key_style>gradient</key_style>
+  <roundrect_radius>18.0</roundrect_radius>
+  <key_size>92.0</key_size>
+  <key_fill_gradient>8.0</key_fill_gradient>
+  <key_stroke_gradient>18.0</key_stroke_gradient>
+  <key_gradient_direction>-3.0</key_gradient_direction>
+  <key_label_font></key_label_font>
+  <key_label_overrides/>
+  <key_shadow_strength>55.0</key_shadow_strength>
+  <key_shadow_size>30.0</key_shadow_size>
+</theme>

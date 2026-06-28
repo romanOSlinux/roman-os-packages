@@ -1,0 +1,88 @@
+.TH KIRO-PROBE-REPORT 8 "2026-05-31" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-probe-report \- generate an HTML insight report from a saved hw-probe package
+.SH SYNOPSIS
+.B kiro-probe-report
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+[\fB\-o\fR|\fB\-\-open\fR]
+[\fIPROBE\fR]
+[\fIOUTPUT\fR]
+.SH DESCRIPTION
+.B kiro-probe-report
+produces a single self-contained, colour-coded HTML page for offline hardware
+insight: a system summary, a device-status overview (works / detected /
+failed), a grouped device table and collapsible raw log sections, read from a
+.B hw-probe
+package's
+.IR host ", " devices " and " logs/
+data.
+.PP
+Run with no
+.I PROBE
+argument it is self-sufficient and resolves, in order:
+.IP 1. 4
+an existing report at
+.IR ~/hw-probe-report.html " \(em it is shown as is;"
+.IP 2. 4
+a saved probe (\fI./hw.info.txz\fR, \fI./hw.info\fR, or the same in the home
+directory) \(em it is rendered, no root needed;
+.IP 3. 4
+nothing yet \(em a hardware probe is run via
+.BR "sudo kiro-probe \-\-save ~" ,
+which asks for root and, after a few minutes, builds the report.
+.PP
+Rendering an existing probe needs no root; only case 3 escalates. When run in
+a desktop session, a notification is shown once the report is ready in the home
+directory (via
+.BR notify-send ,
+if available).
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without writing any file.
+.TP
+.BR \-o ", " \-\-open
+Open the finished report in the default browser
+.RB ( xdg\-open ).
+.TP
+.I PROBE
+Path to an
+.I hw.info.txz
+archive or an
+.I hw.info
+directory. When omitted, the self-sufficient resolution described above is
+used.
+.TP
+.I OUTPUT
+HTML file to write. Defaults to
+.I hw-probe-report.html
+next to the probe.
+.SH PRIVACY
+The collapsed raw-log sections (dmidecode, smartctl, lsblk) embed hardware
+serial numbers. The report is for local diagnostics and is marked local-only;
+do not publish, upload or share the generated file.
+.SH FILES
+.TP
+.I /usr/local/lib/kiro-probe-report.py
+The HTML generator invoked by this wrapper.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-probe-report ~/Documents/hw.info.txz
+kiro-probe-report ./hw.info report.html
+.EE
+.SH SEE ALSO
+.BR kiro-probe (8),
+.BR hw-probe (1)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

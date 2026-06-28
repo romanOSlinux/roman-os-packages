@@ -1,0 +1,69 @@
+.TH KIRO-SET-CORES-MIN2 8 "2026-06-01" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-set-cores-min2 \- configure makepkg.conf for the CPU core count minus two
+.SH SYNOPSIS
+.B kiro-set-cores-min2
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-set-cores-min2
+reads the available CPU core count with
+.BR nproc (1)
+and edits
+.I /etc/makepkg.conf
+so package builds use two cores fewer than the total, leaving two
+cores free to keep the desktop responsive during long builds.
+.PP
+It makes two changes:
+.IP 1. 4
+Sets
+.B MAKEFLAGS=\(dq-j\fIN\fR\(dq
+where
+.I N
+is the core count minus two. Any existing
+.B MAKEFLAGS
+line \(em the commented
+.BR #MAKEFLAGS=\(dq-j2\(dq
+default or a value set by a previous run \(em is replaced.
+.IP 2. 4
+Changes
+.B PKGEXT
+from
+.I .pkg.tar.xz
+to
+.IR .pkg.tar.zst ,
+which is faster to compress and decompress.
+.PP
+On systems with too few cores the value is floored to
+.BR \-j1 .
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+.SH FILES
+.TP
+.I /etc/makepkg.conf
+File modified by this script.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-set-cores-min2 --dry-run
+kiro-set-cores-min2
+.EE
+.SH SEE ALSO
+.BR kiro-set-cores (8),
+.BR kiro-set-cores-min1 (8),
+.BR makepkg.conf (5),
+.BR makepkg (8),
+.BR nproc (1)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

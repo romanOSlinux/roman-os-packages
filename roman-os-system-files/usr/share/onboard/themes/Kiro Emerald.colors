@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+
+<!-- Kiro Emerald color scheme. White labels on emerald keys over a deep green field. -->
+
+<color_scheme name="Kiro Emerald" format="2.1">
+    <window type="key-popup">
+        <color element="border" rgb="#34d399" opacity="1.0"/>
+    </window>
+
+    <layer> <color element="background" rgb="#04140e" opacity="1.0"/> </layer>
+    <layer> <color element="background" rgb="#06251a" opacity="0.92"/> </layer>
+    <layer> <color element="background" rgb="#053d2b" opacity="0.92"/> </layer>
+
+    <key_group>
+        <color element="fill"   rgb="#059669"/>
+        <color element="stroke" rgb="#02100b"/>
+        <color element="label"  rgb="#ffffff"/>
+        icon0
+
+        <key_group>
+            <color element="fill" rgb="#d1fae5"/>
+            <color element="label" rgb="#04140e"/>
+            icon1, icon2
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#064e3b"/>
+            icon3,
+            RCTL, LCTL, RALT, LALT, LWIN, CAPS,
+            LFSH, RTSH, NMLK, ESC
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#065f46"/>
+            MENU, RWIN, BKSP, TAB, RTRN,
+            KPDL, KPEN,
+            LEFT, RGHT, UP, DOWN, INS, DELE, HOME, END, PGUP, PGDN,
+            F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
+            Prnt, Pause, Scroll,
+            KPSU, KPDV KPAD, KPMU,
+            secondaryclick, middleclick, doubleclick, dragclick, hoverclick,
+            hide, showclick, move, layer,
+            quit
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#047857"/>
+            m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#f59e0b"/>
+            <color element="label" rgb="#04140e"/>
+            settings
+        </key_group>
+
+        <!-- word suggestions -->
+        <key_group>
+            <color element="fill" rgb="#053d2b"/>
+            wordlist, prediction
+        </key_group>
+    </key_group>
+</color_scheme>

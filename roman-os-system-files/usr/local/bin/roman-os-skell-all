@@ -1,0 +1,154 @@
+#!/bin/bash
+set -Euo pipefail
+##################################################################################################################
+# Author    : Erik Dubois
+# Website   : https://kiroproject.be
+##################################################################################################################
+#
+#   DO NOT JUST RUN THIS. EXAMINE AND JUDGE. RUN AT YOUR OWN RISK.
+#
+#   Purpose:
+#   Copies /etc/skel/ into the current user's home directory, taking a
+#   timestamped backup of the WHOLE ~/.config first. This is the thorough
+#   variant; its fast sibling kiro-skell backs up only the configs /etc/skel
+#   actually overwrites.
+#
+#   Why: lets a user re-apply the Kiro default configs to an existing
+#   account without nuking personal data; the ~/.config backup is the
+#   safety net.
+#
+#   Self-contained by design: this script does NOT source
+#   /usr/local/lib/kiro-common.sh. It inlines the handful of helpers it needs
+#   so it runs unchanged on any distro (the library is Kiro-only). That makes
+#   it safe to vendor into other projects. All user-facing text uses
+#   "$(basename "$0")", so a verbatim copy under a different filename prints
+#   its own name with no edits.
+#
+##################################################################################################################
+
+DRY_RUN=false
+NAME="$(basename "$0")"
+
+# ── Inlined helpers (kept in step with /usr/local/lib/kiro-common.sh) ─────────
+if command -v tput >/dev/null 2>&1 && [[ -t 1 ]]; then
+    RED="$(tput setaf 1)";    GREEN="$(tput setaf 2)"
+    YELLOW="$(tput setaf 3)"; BLUE="$(tput setaf 4)"
+    CYAN="$(tput setaf 6)";   BOLD="$(tput bold)"
+    RESET="$(tput sgr0)"
+else
+    RED=""; GREEN=""; YELLOW=""; BLUE=""; CYAN=""; BOLD=""; RESET=""
+fi
+
+log_section() {
+    echo
+    echo "${GREEN}################################################################################${RESET}"
+    echo "${BOLD}${GREEN}$1${RESET}"
+    echo "${GREEN}################################################################################${RESET}"
+    echo
+}
+log_info()    { echo "${BLUE}ℹ ${1}${RESET}"; }
+log_success() { echo "${GREEN}✓ ${1}${RESET}"; }
+
+show_help() {
+    cat <<EOF
+${BOLD}${GREEN}${NAME}${RESET} - Copy /etc/skel to home directory with a ~/.config backup
+
+${BOLD}Usage:${RESET}
+    ${NAME} [--help] [--version] [--dry-run]
+
+${BOLD}Options:${RESET}
+    -h, --help          Show this help message and exit
+    -v, --version       Show version information and exit
+    -d, --dry-run       Show what would be done without making changes
+
+${BOLD}Examples:${RESET}
+    ${NAME} --dry-run
+    ${NAME}
+EOF
+}
+
+show_version() {
+    local resolved pkg
+    resolved="$(realpath "$0" 2>/dev/null || echo "$0")"
+    if pkg="$(pacman -Qqo "${resolved}" 2>/dev/null)" && [[ -n "${pkg}" ]]; then
+        pacman -Q "${pkg}"
+    else
+        echo "${NAME} (not installed via pacman)"
+    fi
+}
+
+execute_or_dryrun() {
+    local description="$1"; shift
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        log_info "[DRY-RUN] Would execute: ${description}"
+        log_info "[DRY-RUN] Command: $*"
+    else
+        "$@"
+    fi
+}
+
+on_error() {
+    echo
+    echo "${RED}ERROR on line ${1}: ${2:-}${RESET}" >&2
+    sleep 10
+}
+trap 'on_error "$LINENO" "$BASH_COMMAND"' ERR
+
+main() {
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help)
+                show_help "$(basename "$0")" \
+                    "Copy /etc/skel to home directory with a ~/.config backup" \
+                    "[--help] [--version] [--dry-run]" \
+                    ""
+                exit 0
+                ;;
+            -v|--version)
+                show_version "$(basename "$0")"
+                exit 0
+                ;;
+            -d|--dry-run)
+                DRY_RUN=true
+                log_info "Dry-run mode enabled — no changes will be made"
+                ;;
+            *)
+                echo "${RED}Unknown option: $arg${RESET}" >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    log_section "${NAME} — restore default configuration from /etc/skel"
+    echo "${NAME} copies /etc/skel to your home directory after making a backup of ~/.config."
+    echo
+    echo "New configurations often end up in /etc/skel — ${NAME} brings them into use."
+    echo
+    echo "It will make a backup of ~/.config with a date/time stamp, then overwrite"
+    echo "your configs with what is in /etc/skel."
+    echo
+    echo "Useful when a tiling WM is crashing — run ${NAME} in a terminal or TTY to recover."
+    echo
+
+    if [[ "$DRY_RUN" == "false" ]]; then
+        read -rp "Can we copy/paste the content from /etc/skel to your home directory? (y/n) " response
+        if [[ "$response" != [yY] ]]; then
+            log_info "Nothing has been changed."
+            return
+        fi
+    fi
+
+    local time
+    time=$(date +%Y.%m.%d-%H.%M.%S)
+    [[ -d ~/.config ]] || mkdir ~/.config
+
+    log_info "Making a backup of ~/.config to ~/.config-backup-$time"
+    execute_or_dryrun "Backup ~/.config to ~/.config-backup-$time" cp -Rf ~/.config "$HOME/.config-backup-$time"
+
+    log_info "Copying /etc/skel to home — be patient"
+    execute_or_dryrun "Copy /etc/skel to $HOME" cp -r /etc/skel/. "$HOME"
+
+    log_success "${NAME} done"
+}
+
+main "$@"

@@ -1,0 +1,354 @@
+#!/bin/bash
+set -Euo pipefail
+##################################################################################################################
+# Author    : Erik Dubois
+# Website   : https://kiroproject.be
+##################################################################################################################
+#
+#   DO NOT JUST RUN THIS. EXAMINE AND JUDGE. RUN AT YOUR OWN RISK.
+#
+#   Purpose:
+#   Produces a single, public-safe diagnostic log file that a user can paste
+#   into the Kiro Discussions board when asking for help. It reuses the full
+#   kiro-diag snapshot (hardware, GPU, kernel, desktop, ...), adds the graphics
+#   driver packages (xf86-video/input, Mesa, Vulkan, NVIDIA), the full list of
+#   explicitly-installed packages, and the dynamic failure evidence a maintainer
+#   actually needs to debug (failed units, recent journal/kernel errors, recent
+#   pacman transactions, and the Calamares install log when present), then
+#   REDACTS every system-identifying value (IP, MAC, UUID, machine-id, hostname,
+#   username) before writing the file.
+#
+#   Why: a snapshot alone can't debug a real report, and raw logs leak private
+#   data onto a public board. kiro-report bridges both: enough to debug, safe
+#   to share.
+#
+##################################################################################################################
+
+# shellcheck source=/usr/local/lib/kiro-common.sh
+if [[ -f /usr/local/lib/kiro-common.sh ]]; then
+    source /usr/local/lib/kiro-common.sh
+else
+    echo "ERROR: kiro-common.sh not found" >&2
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+OUTPUT_PATH=""
+COPY_TO_CLIPBOARD=false
+DISCUSSIONS_URL="https://github.com/kirodubes/kiro-discussions/discussions"
+
+_field() {
+    printf "  ${BOLD}%-26s${RESET} %s\n" "${1}:" "${2}"
+}
+
+##################################################################################################################
+# Redaction — strip every system-identifying value before the file is shared
+##################################################################################################################
+# Order matters: MAC and dashed-UUID first so their hex/colons aren't eaten by
+# the broader machine-id / IPv6 rules. PCI addresses (0000:03:00.0) survive
+# because the IPv6 rule only fires on the "::" double-colon, which PCI never has.
+# The IPv4 rule uses 0-255 octets and skips a quad followed by "-" or ".<letter>"
+# so package versions (libva 2.23.0-1, sddm-git 0.21.0.123.gd7f8b02-1) aren't
+# mistaken for addresses, while a real IP at a sentence end (...of 10.0.0.5.) is
+# still scrubbed; the IPv6 rule is
+# anchored on non-alphanumeric boundaries so C++ scope operators (Calamares::Job)
+# survive while real "::" addresses are still scrubbed.
+redact() {
+    local esc host user
+    esc=$(printf '\033')
+    host="$(hostname 2>/dev/null || true)"
+    user="${TARGET_USER}"
+
+    local oct='(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])'                              # a valid 0-255 IPv4 octet
+    local args=()
+    args+=(-e "s/${esc}\[[0-9;]*m//g")                                              # strip ANSI colors
+    args+=(-e 's/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/<mac>/g')                       # MAC address
+    args+=(-e 's/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/<uuid>/g')  # UUID
+    args+=(-e 's/\b[0-9a-f]{32}\b/<machine-id>/g')                                  # systemd machine-id
+    args+=(-e "s/\b${oct}\.${oct}\.${oct}\.${oct}([^-.0-9]|\.[^0-9A-Za-z]|\.\$|\$)/<ip>\5/g")  # IPv4 (not a version)
+    args+=(-e 's/(^|[^0-9A-Za-z:])([0-9A-Fa-f:]*::[0-9A-Fa-f:]*)([^0-9A-Za-z:]|$)/\1<ipv6>\3/g')  # IPv6 (compressed)
+    args+=(-e "s#/home/${user}#/home/<user>#g")                                     # home path
+    [[ -n "${host}" ]] && args+=(-e "s/\b${host}\b/<host>/g")                       # hostname
+    [[ -n "${user}" ]] && args+=(-e "s/\b${user}\b/<user>/g")                       # username
+
+    sed -E "${args[@]}"
+}
+
+##################################################################################################################
+# Report body
+##################################################################################################################
+
+report_header() {
+    echo "##################################################################"
+    echo "# Kiro diagnostic report"
+    echo "# Generated : $(date)"
+    echo "#"
+    echo "# Sensitive values (IP / MAC / UUID / machine-id / hostname /"
+    echo "# username) have been redacted so this file is safe to paste on"
+    echo "# the public Kiro Discussions board. Glance through it anyway."
+    echo "##################################################################"
+}
+
+section_debug() {
+    log_subsection "Recent Issues (debug)"
+
+    local failed
+    failed=$(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}' | tr '\n' ' ' | xargs || true)
+    _field "Failed units" "${failed:-none}"
+
+    echo
+    echo "  ${BOLD}Journal errors this boot (priority >= err, last 25):${RESET}"
+    local jerr
+    jerr=$(journalctl -p 3 -b --no-pager 2>/dev/null | tail -n 25 || true)
+    [[ -n "${jerr}" ]] && echo "${jerr}" | sed 's/^/    /' || echo "    (none)"
+
+    echo
+    echo "  ${BOLD}Kernel errors (dmesg level err+, last 25):${RESET}"
+    local kerr
+    kerr=$(dmesg --level=err,crit,alert,emerg 2>/dev/null | tail -n 25 || true)
+    [[ -n "${kerr}" ]] && echo "${kerr}" | sed 's/^/    /' || echo "    (none)"
+
+    echo
+    echo "  ${BOLD}Recent pacman actions (last 30):${RESET}"
+    local pacact
+    pacact=$(grep -E '\[ALPM\] (installed|upgraded|removed)' /var/log/pacman.log 2>/dev/null | tail -n 30 || true)
+    [[ -n "${pacact}" ]] && echo "${pacact}" | sed 's/^/    /' || echo "    (none)"
+    echo
+}
+
+# Graphics stack is the most common support topic; list the actual driver
+# packages (Xorg video/input, Mesa, Vulkan, NVIDIA, VA-API) with versions.
+section_drivers() {
+    log_subsection "Graphics / driver packages"
+    local drv
+    drv=$(pacman -Q 2>/dev/null | grep -iE '^(xf86-video-|xf86-input-|xorg-server|mesa|lib32-mesa|vulkan-|lib32-vulkan-|libva|lib32-libva|libvdpau|nvidia|lib32-nvidia|libdrm|intel-media-driver|intel-gmmlib|onevpl|opencl-)' || true)
+    [[ -n "${drv}" ]] && echo "${drv}" | sed 's/^/  /' || echo "  (no matching driver packages)"
+    echo
+}
+
+# Full list of explicitly-installed packages (names + versions only, no PII) —
+# what a maintainer needs to reproduce a user's environment.
+section_packages_full() {
+    log_subsection "Explicitly installed packages"
+    _field "Explicit packages" "$(pacman -Qqe 2>/dev/null | wc -l)"
+    echo
+    pacman -Qe 2>/dev/null | sed 's/^/  /' || true
+    echo
+}
+
+# Only present on systems installed (or being installed) via Calamares — the
+# single most useful artifact when a user reports an install problem.
+section_calamares() {
+    [[ -f /var/log/Calamares.log ]] || return 0
+
+    log_subsection "Calamares install log"
+    _field "File" "/var/log/Calamares.log"
+    _field "Total lines" "$(wc -l < /var/log/Calamares.log 2>/dev/null || echo '?')"
+
+    echo
+    echo "  ${BOLD}Warnings / errors:${RESET}"
+    # Drop Qt framework chatter (beginResetModel, QObject::setParent, QIODevice::read,
+    # QLayout, ...) — it's emitted on every install and never points at a real fault.
+    local cwarn
+    cwarn=$(grep -iE 'warning|error|fail|abort' /var/log/Calamares.log 2>/dev/null \
+        | grep -vF '(Qt):' | tail -n 40 || true)
+    [[ -n "${cwarn}" ]] && echo "${cwarn}" | sed 's/^/    /' || echo "    (none)"
+
+    echo
+    echo "  ${BOLD}Tail (last 100 lines):${RESET}"
+    local ctail
+    ctail=$(tail -n 100 /var/log/Calamares.log 2>/dev/null || true)
+    [[ -n "${ctail}" ]] && echo "${ctail}" | sed 's/^/    /' || echo "    (unreadable)"
+    echo
+}
+
+# Disk encryption hint — the partitioning/LUKS choice is made in Calamares and
+# is the first thing to know on any boot/unlock/install report. Runs as root, so
+# the LUKS version is available; no device UUIDs are printed (and redact() would
+# scrub them anyway).
+section_encryption() {
+    log_subsection "Disk encryption"
+
+    local root_fs
+    root_fs=$(findmnt -no FSTYPE / 2>/dev/null || echo "unknown")
+
+    local -a luks_devs=()
+    mapfile -t luks_devs < <(lsblk -rpno NAME,FSTYPE 2>/dev/null | awk '$2=="crypto_LUKS"{print $1}')
+
+    if [[ ${#luks_devs[@]} -eq 0 ]]; then
+        _field "Root filesystem" "${root_fs}"
+        _field "Encryption" "none (unencrypted install)"
+        echo
+        return
+    fi
+
+    # All containers are created together by Calamares, so the first reflects the set.
+    local ver
+    ver=$(cryptsetup luksDump "${luks_devs[0]}" 2>/dev/null | awk -F: '/^Version:/{gsub(/[[:space:]]/,"",$2); print $2}')
+
+    # A dm-crypt device carrying a swap signature = encrypted swap. Detected via
+    # lsblk (not swapon, which reports the active swap as /dev/dm-N, hiding the
+    # crypt layer).
+    local swap_enc="no"
+    if lsblk -rno FSTYPE,TYPE 2>/dev/null | awk '$1=="swap" && $2=="crypt"{f=1} END{exit !f}'; then
+        swap_enc="yes"
+    fi
+
+    _field "Root filesystem" "${root_fs}"
+    _field "Encryption" "LUKS${ver:-?} full-disk (${#luks_devs[@]} container(s))"
+    _field "Encrypted swap" "${swap_enc}"
+    echo
+}
+
+build_report() {
+    # Run inside a subshell with colors blanked so the captured text is plain
+    # even though the parent script's stdout is a terminal. kiro-diag is a
+    # separate process whose stdout is this pipe, so it auto-disables color.
+    (
+        RED='' GREEN='' YELLOW='' BLUE='' PURPLE='' CYAN='' BOLD='' RESET=''
+        report_header
+        echo
+        kiro-diag 2>&1 | grep -v 'kiro-diag done' || true
+        section_encryption
+        section_drivers
+        section_debug
+        section_calamares
+        section_packages_full
+    ) | redact
+}
+
+##################################################################################################################
+# Clipboard — push the report straight to the user's clipboard (--copy)
+##################################################################################################################
+# ensure_root has already re-exec'd us as root with a scrubbed environment, so a
+# clipboard tool run here would target root's (empty) session. Because we are
+# root we can read the invoking user's live session variables straight out of a
+# graphical process's /proc/<pid>/environ — far more robust than guessing socket
+# names or Xauthority paths (XAUTHORITY is often a random /tmp file). We then run
+# the clipboard tool AS that user: Wayland first (Kiro defaults to Wayland), then
+# X11. Returns non-zero when no working method exists (no wl-copy/xclip/xsel, or
+# no graphical session to copy into).
+copy_to_clipboard() {
+    local payload="$1"
+    local uid
+    uid="$(id -u "${TARGET_USER}" 2>/dev/null || true)"
+    [[ -z "${uid}" ]] && return 1
+
+    # Harvest the session env from the first user process that carries a display.
+    local pid environ vars wl display xauth runtime
+    for pid in $(pgrep -u "${uid}" 2>/dev/null || true); do
+        environ="/proc/${pid}/environ"
+        [[ -r "${environ}" ]] || continue
+        vars="$(tr '\0' '\n' < "${environ}" 2>/dev/null || true)"
+        grep -qE '^(WAYLAND_DISPLAY|DISPLAY)=.' <<<"${vars}" || continue
+        wl="$(grep -E '^WAYLAND_DISPLAY=' <<<"${vars}" | head -n1 | cut -d= -f2- || true)"
+        display="$(grep -E '^DISPLAY=' <<<"${vars}" | head -n1 | cut -d= -f2- || true)"
+        xauth="$(grep -E '^XAUTHORITY=' <<<"${vars}" | head -n1 | cut -d= -f2- || true)"
+        runtime="$(grep -E '^XDG_RUNTIME_DIR=' <<<"${vars}" | head -n1 | cut -d= -f2- || true)"
+        break
+    done
+    runtime="${runtime:-/run/user/${uid}}"
+
+    # Wayland first.
+    if [[ -n "${wl:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
+        printf '%s' "${payload}" | sudo -u "${TARGET_USER}" \
+            env XDG_RUNTIME_DIR="${runtime}" WAYLAND_DISPLAY="${wl}" wl-copy 2>/dev/null && return 0
+    fi
+
+    # X11 (xclip / xsel) against the harvested display and X authority.
+    if [[ -n "${display:-}" ]]; then
+        local x11env=(DISPLAY="${display}")
+        [[ -n "${xauth:-}" ]] && x11env+=(XAUTHORITY="${xauth}")
+        if command -v xclip >/dev/null 2>&1; then
+            printf '%s' "${payload}" | sudo -u "${TARGET_USER}" env "${x11env[@]}" xclip -selection clipboard 2>/dev/null && return 0
+        fi
+        if command -v xsel >/dev/null 2>&1; then
+            printf '%s' "${payload}" | sudo -u "${TARGET_USER}" env "${x11env[@]}" xsel --clipboard --input 2>/dev/null && return 0
+        fi
+    fi
+
+    return 1
+}
+
+##################################################################################################################
+# Main
+##################################################################################################################
+
+main() {
+    local -a orig_args=("$@")
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help "$(basename "$0")" \
+                    "Generate a public-safe Kiro diagnostic report for Kiro Discussions" \
+                    "[--help] [--version] [--output PATH] [--copy]" \
+                    "-o, --output PATH   Write the report to PATH instead of the default
+    -c, --copy          Also copy the report to the clipboard (fenced for Discussions)"
+                exit 0
+                ;;
+            -v|--version)
+                show_version "$(basename "$0")"
+                exit 0
+                ;;
+            -o|--output)
+                OUTPUT_PATH="${2:-}"
+                [[ -z "$OUTPUT_PATH" ]] && { echo "${RED}--output needs a path${RESET}" >&2; exit 1; }
+                shift 2
+                ;;
+            -o=*|--output=*)
+                OUTPUT_PATH="${1#*=}"
+                shift
+                ;;
+            -c|--copy)
+                COPY_TO_CLIPBOARD=true
+                shift
+                ;;
+            *)
+                echo "${RED}Unknown option: $1${RESET}" >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    ensure_root "${orig_args[@]}"
+
+    local user_home outfile
+    user_home="$(getent passwd "${TARGET_USER}" | cut -d: -f6 || true)"
+    outfile="${OUTPUT_PATH:-${user_home:-/tmp}/kiro-report-$(date +%Y%m%d-%H%M%S).log}"
+
+    log_section "Generating Kiro report"
+    log_info "Collecting diagnostics — this may take a few seconds..."
+
+    build_report > "${outfile}"
+
+    chown "${TARGET_USER}:${TARGET_USER}" "${outfile}" 2>/dev/null || true
+    chmod 644 "${outfile}"
+
+    log_success "Report saved (redacted for public sharing):"
+    echo "  file://${outfile}"
+    echo
+
+    if [[ "${COPY_TO_CLIPBOARD}" == true ]]; then
+        # GitHub Discussions renders Markdown, so wrap the report in a ``` fence
+        # — pasting then drops straight into a code block.
+        local fenced
+        fenced="$(printf '```\n%s\n```\n' "$(cat "${outfile}")")"
+        if copy_to_clipboard "${fenced}"; then
+            log_success "Report copied to the clipboard (fenced for Discussions) — just paste it."
+        else
+            log_warn "Could not reach the clipboard (no wl-copy/xclip/xsel, or no graphical session)."
+        fi
+        echo
+    fi
+
+    log_info "Review it, then paste the contents inside a code block (\`\`\`) on:"
+    echo "  ${DISCUSSIONS_URL}"
+    echo
+    echo "${YELLOW}Redaction strips IP / MAC / UUID / machine-id / hostname / username,"
+    echo "but skim it once before posting — automated scrubbing is never perfect.${RESET}"
+
+    log_success "$(basename "$0") done"
+}
+
+main "$@"

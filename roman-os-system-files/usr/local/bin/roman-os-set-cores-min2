@@ -1,0 +1,77 @@
+#!/bin/bash
+set -Euo pipefail
+##################################################################################################################
+# Author    : Erik Dubois
+# Website   : https://kiroproject.be
+##################################################################################################################
+#
+#   DO NOT JUST RUN THIS. EXAMINE AND JUDGE. RUN AT YOUR OWN RISK.
+#
+#   Purpose:
+#   Configures /etc/makepkg.conf to use the CPU core count minus two
+#   (MAKEFLAGS=-jN, threaded compression), leaving 2 cores free.
+#
+#   Why: building with all cores can lock up the desktop; reserving two
+#   cores keeps the machine responsive during long AUR builds.
+#
+##################################################################################################################
+
+# shellcheck source=/usr/local/lib/kiro-common.sh
+if [[ -f /usr/local/lib/kiro-common.sh ]]; then
+    source /usr/local/lib/kiro-common.sh
+else
+    echo "ERROR: kiro-common.sh not found" >&2
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DRY_RUN=false
+RESERVE=2
+
+main() {
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help)
+                show_help "$(basename "$0")" \
+                    "Configure makepkg.conf for the CPU core count minus two" \
+                    "[--help] [--version] [--dry-run]" \
+                    ""
+                exit 0
+                ;;
+            -v|--version)
+                show_version "$(basename "$0")"
+                exit 0
+                ;;
+            -d|--dry-run)
+                DRY_RUN=true
+                log_info "Dry-run mode enabled — no changes will be made"
+                ;;
+            *)
+                echo "${RED}Unknown option: $arg${RESET}" >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    log_section "$(basename "$0")"
+
+    local numberofcores targetcores
+    numberofcores=$(nproc)
+    targetcores=$((numberofcores - RESERVE))
+
+    if [ "$targetcores" -lt 1 ]; then
+        log_warn "Only $numberofcores core(s) detected — flooring MAKEFLAGS to -j1."
+        targetcores=1
+    fi
+
+    log_info "Detected $numberofcores cores — setting MAKEFLAGS to -j$targetcores (leaving $RESERVE cores free)."
+    execute_or_dryrun "Set MAKEFLAGS=-j${targetcores} in makepkg.conf" \
+        sudo sed -i -E 's/^#?MAKEFLAGS=.*/MAKEFLAGS="-j'"$targetcores"'"/' /etc/makepkg.conf
+    log_info "Changing the PKGEXT to pkg.tar.zst"
+    execute_or_dryrun "Set PKGEXT=.pkg.tar.zst in makepkg.conf" \
+        sudo sed -i "s/PKGEXT='.pkg.tar.xz'/PKGEXT='.pkg.tar.zst'/g" /etc/makepkg.conf
+
+    log_success "$(basename "$0") done"
+}
+
+main "$@"

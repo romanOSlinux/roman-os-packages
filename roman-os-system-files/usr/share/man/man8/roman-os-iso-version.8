@@ -1,0 +1,35 @@
+.TH KIRO-ISO-VERSION 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-iso-version \- show the Kiro ISO version string
+.SH SYNOPSIS
+.B kiro-iso-version
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+.SH DESCRIPTION
+.B kiro-iso-version
+prints the contents of
+.I /etc/dev-rel
+which records the ISO version and build date of the Kiro installation.
+If the file is absent the system was not installed from a Kiro ISO.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.SH FILES
+.TP
+.I /etc/dev-rel
+ISO version identifier written during installation.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-iso-version
+.EE
+.SH SEE ALSO
+.BR kiro-audit (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

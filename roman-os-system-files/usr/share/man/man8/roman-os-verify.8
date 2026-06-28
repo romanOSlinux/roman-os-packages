@@ -1,0 +1,67 @@
+.TH KIRO-VERIFY 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-verify \- verify Kiro system configuration is correctly applied
+.SH SYNOPSIS
+.B kiro-verify
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+.SH DESCRIPTION
+.B kiro-verify
+checks that the runtime state of the system matches the configuration
+files deployed by Kiro.
+Unlike
+.BR kiro-audit (8)
+which checks installed packages and post-install cleanup,
+.B kiro-verify
+focuses on whether the deployed config files are actually taking effect.
+.PP
+Checks performed:
+.IP \(bu 4
+Config file presence: all expected files under
+.IR /etc/sysctl.d/ ,
+.IR /etc/systemd/ ,
+.IR /etc/modprobe.d/ ,
+.IR /etc/udev/rules.d/ ,
+.IR /etc/X11/xorg.conf.d/ ,
+and
+.IR /etc/pacman.d/hooks/ .
+.IP \(bu 4
+Sysctl runtime values: each key in
+.I /etc/sysctl.d/99-kiro-optimizations.conf
+matched against the live kernel value.
+.IP \(bu 4
+ZRAM: device present, active as swap, zstd compression.
+.IP \(bu 4
+IO schedulers: correct scheduler per device type
+(none for NVMe/VirtIO, bfq for SSDs and eMMC, mq-deadline for HDDs).
+.IP \(bu 4
+Transparent Huge Pages: defrag=defer+madvise, shmem_enabled=advise.
+.IP \(bu 4
+Blacklisted modules: iTCO_wdt, sp5100_tco, evbug not loaded.
+.IP \(bu 4
+Systemd unit state: no failed units; kiro-pci-latency and zram-setup successful.
+.IP \(bu 4
+Journal error scan: boot errors, kiro-related warnings, dmesg errors, udev errors.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit (does not require root).
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit (does not require root).
+.SH EXIT STATUS
+.TP
+.B 0
+All checks passed or produced only warnings.
+.TP
+.B 1
+One or more checks failed, or insufficient privileges.
+.SH NOTES
+Must be run as root:
+.B sudo kiro-verify
+.SH SEE ALSO
+.BR kiro-audit (8),
+.BR kiro-lint (8),
+.BR sysctl (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

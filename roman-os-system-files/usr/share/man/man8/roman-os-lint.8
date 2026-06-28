@@ -1,0 +1,88 @@
+.TH KIRO-LINT 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-lint \- lint Kiro system configuration files for errors
+.SH SYNOPSIS
+.B kiro-lint
+[\fB\-\-source\fR \fIpath\fR]
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+.SH DESCRIPTION
+.B kiro-lint
+is a static analyser for the configuration files deployed by Kiro.
+It checks the live system (default) or a repository checkout
+and reports issues with PASS/FAIL/WARN/SKIP markers.
+.PP
+Checks performed:
+.IP 1. 4
+.B Sysctl duplicate keys
+\(em detects the same key set more than once in
+.I /etc/sysctl.d/*.conf
+(the last value wins; earlier assignments are silently ignored).
+.IP 2. 4
+.B Modprobe parameters vs sysfs
+\(em for each loaded module, verifies that every
+.I options
+parameter in
+.I /etc/modprobe.d/*.conf
+exists under
+.IR /sys/module/<driver>/parameters/ .
+.IP 3. 4
+.B Cross-file conflicts
+\(em flags the same driver parameter set to different values in
+different modprobe.d files, and warns when a udev ATTR write would silently
+override a modprobe.d setting with a different value.
+.IP 4. 4
+.B Udev ATTR write targets in sysfs
+\(em for rules that write to an
+.B ATTR{}
+path, verifies that the path exists on at least one matching live device.
+.SH OPTIONS
+.TP
+.BI \-\-source " path"
+Root of the config tree to analyse (default:
+.IR / ).
+Pass the repository checkout path for pre-deployment checks:
+.PP
+.RS 8
+.EX
+kiro-lint --source /path/to/edu-system-files
+.EE
+.RE
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.SH EXIT STATUS
+.TP
+.B 0
+All checks passed or produced only warnings.
+.TP
+.B 1
+One or more checks failed.
+.SH FILES
+.TP
+.I /etc/sysctl.d/
+Sysctl configuration files analysed by check 1.
+.TP
+.I /etc/modprobe.d/
+Modprobe options files analysed by checks 2 and 3.
+.TP
+.I /etc/udev/rules.d/
+Udev rules analysed by checks 3 and 4.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-lint
+kiro-lint --source ~/EDU/edu-system-files
+.EE
+.SH SEE ALSO
+.BR kiro-verify (8),
+.BR sysctl (8),
+.BR modprobe (8),
+.BR udevadm (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

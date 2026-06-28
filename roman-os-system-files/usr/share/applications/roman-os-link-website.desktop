@@ -1,0 +1,25 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=roman-os Website
+GenericName=Web Bookmark
+GenericName[de]=Web-Lesezeichen
+GenericName[fr]=Marque-page Web
+GenericName[nl]=Webbladwijzer
+GenericName[es]=Marcador web
+GenericName[it]=Segnalibro web
+GenericName[pt_BR]=Favorito da web
+GenericName[pt]=Marcador web
+GenericName[ru]=Веб-закладка
+GenericName[pl]=Zakładka internetowa
+GenericName[uk]=Вебзакладка
+GenericName[zh_CN]=网页书签
+GenericName[ja]=ウェブブックマーク
+GenericName[tr]=Web yer imi
+GenericName[cs]=Webová záložka
+Comment=https://roman-osproject.be
+Exec=xdg-open https://roman-osproject.be
+Icon=roman-os
+Terminal=false
+Categories=Network;X-roman-os;
+Keywords=roman-os;website;home;homepage;

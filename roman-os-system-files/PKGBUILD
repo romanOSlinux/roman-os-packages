@@ -1,0 +1,25 @@
+# Maintainer: Roman <romanOSlinux>
+pkgname=roman-os-system-files
+pkgver=1.0
+pkgrel=1
+pkgdesc="Archivos base del sistema y utilidades para roman-os"
+arch=('any')
+url="https://github.com/romanOSlinux/roman-os-packages"
+license=('GPL3')
+provides=('kiro-system-files')
+conflicts=('kiro-system-files')
+depends=('bash' 'roman-os-mirrorlist')
+source=()
+sha256sums=()
+
+package() {
+    cd "$srcdir/.."
+    
+    # Instalar todos los archivos bajo etc/ y usr/
+    cp -r etc "$pkgdir/"
+    cp -r usr "$pkgdir/"
+    
+    # Limpiar lo que no necesitamos de Kiro
+    rm -f "$pkgdir/usr/local/bin/roman-os-news"
+    rm -rf "$pkgdir/usr/share/kiro"
+}

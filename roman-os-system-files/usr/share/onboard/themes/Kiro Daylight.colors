@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+
+<!-- Kiro Daylight color scheme. Dark labels on light keys for maximum daytime readability. -->
+
+<color_scheme name="Kiro Daylight" format="2.1">
+    <window type="key-popup">
+        <color element="border" rgb="#1f6feb" opacity="1.0"/>
+    </window>
+
+    <layer> <color element="background" rgb="#f5f7fa" opacity="1.0"/> </layer>
+    <layer> <color element="background" rgb="#eef2f7" opacity="0.96"/> </layer>
+    <layer> <color element="background" rgb="#e6eef7" opacity="0.96"/> </layer>
+
+    <key_group>
+        <color element="fill"   rgb="#ffffff"/>
+        <color element="stroke" rgb="#b7c2cf"/>
+        <color element="label"  rgb="#0d1117"/>
+        icon0
+
+        <key_group>
+            <color element="fill" rgb="#1f6feb"/>
+            <color element="label" rgb="#ffffff"/>
+            icon1, icon2
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#dbe4ee"/>
+            icon3,
+            RCTL, LCTL, RALT, LALT, LWIN, CAPS,
+            LFSH, RTSH, NMLK, ESC
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#cdd9e8"/>
+            MENU, RWIN, BKSP, TAB, RTRN,
+            KPDL, KPEN,
+            LEFT, RGHT, UP, DOWN, INS, DELE, HOME, END, PGUP, PGDN,
+            F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
+            Prnt, Pause, Scroll,
+            KPSU, KPDV KPAD, KPMU,
+            secondaryclick, middleclick, doubleclick, dragclick, hoverclick,
+            hide, showclick, move, layer,
+            quit
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#d4e3f7"/>
+            m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#1f6feb"/>
+            <color element="label" rgb="#ffffff"/>
+            settings
+        </key_group>
+
+        <!-- word suggestions -->
+        <key_group>
+            <color element="fill" rgb="#eef2f7"/>
+            wordlist, prediction
+        </key_group>
+    </key_group>
+</color_scheme>

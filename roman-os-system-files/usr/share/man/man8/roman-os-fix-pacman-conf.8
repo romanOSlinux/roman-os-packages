@@ -1,0 +1,47 @@
+.TH KIRO-FIX-PACMAN-CONF 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-fix-pacman-conf \- replace /etc/pacman.conf with the Kiro default
+.SH SYNOPSIS
+.B kiro-fix-pacman-conf
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-fix-pacman-conf
+restores
+.I /etc/pacman.conf
+to the Kiro default.
+It first tries the locally-shipped copy at
+.IR /usr/local/share/kiro/pacman.conf ;
+if that file is absent it downloads the current version from GitHub,
+provided network connectivity is available.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+.SH FILES
+.TP
+.I /usr/local/share/kiro/pacman.conf
+Preferred local source.
+.TP
+.I /etc/pacman.conf
+Destination file.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-fix-pacman-conf --dry-run
+kiro-fix-pacman-conf
+.EE
+.SH SEE ALSO
+.BR pacman.conf (5),
+.BR pacman (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

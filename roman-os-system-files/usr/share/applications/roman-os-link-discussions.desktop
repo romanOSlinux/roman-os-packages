@@ -1,0 +1,25 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=roman-os Discussions
+GenericName=Web Bookmark
+GenericName[de]=Web-Lesezeichen
+GenericName[fr]=Marque-page Web
+GenericName[nl]=Webbladwijzer
+GenericName[es]=Marcador web
+GenericName[it]=Segnalibro web
+GenericName[pt_BR]=Favorito da web
+GenericName[pt]=Marcador web
+GenericName[ru]=Веб-закладка
+GenericName[pl]=Zakładka internetowa
+GenericName[uk]=Вебзакладка
+GenericName[zh_CN]=网页书签
+GenericName[ja]=ウェブブックマーク
+GenericName[tr]=Web yer imi
+GenericName[cs]=Webová záložka
+Comment=https://github.com/roman-osdubes/roman-os-discussions/discussions
+Exec=xdg-open https://github.com/roman-osdubes/roman-os-discussions/discussions
+Icon=roman-os-bleu
+Terminal=false
+Categories=Network;X-roman-os;
+Keywords=roman-os;discussions;ideas;community;suggestions;

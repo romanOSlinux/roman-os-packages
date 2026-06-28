@@ -1,0 +1,131 @@
+.TH KIRO-CALAMARES-LOG 8 "2026-06-01" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-calamares-log \- summarise the Calamares installer log
+.SH SYNOPSIS
+.B kiro-calamares-log
+[\fB\-f\fR|\fB\-\-full\fR]
+[\fB\-\-scrub\fR]
+[\fB\-s\fR|\fB\-\-save\fR \fR[\fIFILE\fR]]
+[\fB\-\-upload\fR]
+.br
+.B kiro-calamares-log
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+.SH DESCRIPTION
+.B kiro-calamares-log
+reads the Calamares installer log
+.RI ( /var/log/Calamares.log )
+and prints a short, readable summary instead of the raw,
+thousand-line dump.
+.PP
+Only the
+.B last
+install session in the log is summarised \(em the file accumulates
+across multiple Calamares launches, and only the most recent run is
+relevant after an install.
+.PP
+The default report has five parts:
+.RS 2
+.IP \(bu 2
+.B Header
+\(em log path, Calamares launch and install-start times, Calamares
+version, branding component, target disk, user and hostname.
+.IP \(bu 2
+.B Timeline
+\(em every install job in order with its duration, computed from the
+gap to the next job. Kiro-specific modules
+.RI ( kiro_remove_nvidia ", " chwd ", " kiro_final ,
+etc.) are marked with an asterisk.
+.IP \(bu 2
+.B Warnings
+\(em only genuine
+.I WARNING
+lines; benign Qt, chcon, EFI-probe and branding noise that appears on
+every healthy install is filtered out.
+.IP \(bu 2
+.B Errors
+\(em error lines, failed jobs and Python tracebacks. Empty on a clean
+install.
+.IP \(bu 2
+.B Verdict
+\(em a one-line
+.I INSTALL CLEAN
+or
+.I INSTALL HAD N ERROR(S)
+result. Completion is detected by Calamares reaching its final job
+.RI ( "Saving files for later" ).
+.RE
+.PP
+It pairs with
+.BR kiro-audit (8):
+.B kiro-audit
+checks the installed system against the intended specification, while
+.B kiro-calamares-log
+explains what the installer itself did.
+.PP
+The log is world-readable, so the tool does not require root.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-f ", " \-\-full
+Append the full raw session log, including the verbose command-output
+lines hidden from the summary.
+.TP
+.B \-\-scrub
+Redact the hostname, username and IP addresses to placeholders. Use
+before sharing the output.
+.TP
+.BR \-s ", " "\-\-save " [\fIFILE\fR]
+Write the summary, as colour-free plain text, to
+.IR FILE .
+With no
+.IR FILE ,
+defaults to
+.IR ~/kiro-calamares-summary-YYYYMMDD-HHMMSS.txt .
+.TP
+.B \-\-upload
+Upload the summary to a paste host and print the resulting URL. This
+option implies
+.B \-\-scrub
+so that no hostname, username or IP address leaves the machine.
+Requires
+.BR curl (1).
+.SH FILES
+.TP
+.I /var/log/Calamares.log
+The Calamares installer log read by this script.
+.SH EXAMPLES
+Print the install summary:
+.PP
+.RS 4
+.EX
+kiro-calamares-log
+.EE
+.RE
+.PP
+Save a scrubbed copy to share with support:
+.PP
+.RS 4
+.EX
+kiro-calamares-log --scrub --save ~/install-report.txt
+.EE
+.RE
+.PP
+Upload a scrubbed summary and get a link:
+.PP
+.RS 4
+.EX
+kiro-calamares-log --upload
+.EE
+.RE
+.SH SEE ALSO
+.BR kiro-audit (8),
+.BR kiro-verify (8),
+.BR curl (1)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

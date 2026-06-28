@@ -1,0 +1,56 @@
+.TH KIRO-WHICH-VGA 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-which-vga \- identify the active GPU driver and OpenGL renderer
+.SH SYNOPSIS
+.B kiro-which-vga
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-which-vga
+runs three checks to identify the active GPU and its driver:
+.IP 1. 4
+.B lspci
+with two different flag sets to list VGA-class PCI devices.
+.IP 2. 4
+.BR glxinfo (1)
+to show the OpenGL vendor and renderer strings.
+.B glxinfo
+is installed automatically if it is absent
+(note: conflicts with the
+.B mesa-demos
+package).
+.IP 3. 4
+.BR nvidia\-smi (1)
+to list NVIDIA GPUs if the driver is present.
+.PP
+Not every check will produce output on all systems; at least one should
+provide useful information.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+In dry-run mode the
+.B glxinfo
+query is skipped if glxinfo is not installed.
+.SH FILES
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-which-vga
+kiro-which-vga --dry-run
+.EE
+.SH SEE ALSO
+.BR glxinfo (1),
+.BR lspci (8),
+.BR nvidia\-smi (1)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

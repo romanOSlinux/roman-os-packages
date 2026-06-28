@@ -1,0 +1,49 @@
+.TH KIRO-GET-MIRRORS 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-get-mirrors \- update the pacman mirrorlist using reflector
+.SH SYNOPSIS
+.B kiro-get-mirrors
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-get-mirrors
+installs
+.BR reflector (1)
+if it is not already present, then runs it to select the 10 fastest mirrors
+by score and write them to
+.IR /etc/pacman.d/mirrorlist .
+.PP
+Use
+.BR kiro-fix-mirrors (8)
+if you prefer
+.B rate-mirrors
+instead.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+.SH FILES
+.TP
+.I /etc/pacman.d/mirrorlist
+Mirror list written by this script.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-get-mirrors --dry-run
+kiro-get-mirrors
+.EE
+.SH SEE ALSO
+.BR kiro-fix-mirrors (8),
+.BR reflector (1),
+.BR pacman (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

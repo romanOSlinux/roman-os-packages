@@ -1,0 +1,62 @@
+.TH KIRO-SET-CORES 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-set-cores \- configure makepkg.conf for the current CPU core count
+.SH SYNOPSIS
+.B kiro-set-cores
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-set-cores
+reads the available CPU core count with
+.BR nproc (1)
+and edits
+.I /etc/makepkg.conf
+to make package builds use all cores.
+.PP
+On multi-core systems it makes two changes:
+.IP 1. 4
+Uncomments and sets
+.B MAKEFLAGS=\(dq-j\fIN\fR\(dq
+where
+.I N
+is the core count, replacing the default
+.BR #MAKEFLAGS=\(dq-j2\(dq .
+.IP 2. 4
+Changes
+.B PKGEXT
+from
+.I .pkg.tar.xz
+to
+.IR .pkg.tar.zst ,
+which is faster to compress and decompress.
+.PP
+On single-core systems no changes are made.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+.SH FILES
+.TP
+.I /etc/makepkg.conf
+File modified by this script.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-set-cores --dry-run
+kiro-set-cores
+.EE
+.SH SEE ALSO
+.BR makepkg.conf (5),
+.BR makepkg (8),
+.BR nproc (1)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

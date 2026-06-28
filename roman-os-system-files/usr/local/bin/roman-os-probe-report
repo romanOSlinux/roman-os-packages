@@ -1,0 +1,222 @@
+#!/bin/bash
+set -Euo pipefail
+##################################################################################################################
+# Author    : Erik Dubois
+# Website   : https://kiroproject.be
+##################################################################################################################
+#
+#   DO NOT JUST RUN THIS. EXAMINE AND JUDGE. RUN AT YOUR OWN RISK.
+#
+#   Purpose:
+#   Shows a single self-contained, colour-coded HTML hardware-insight page
+#   (system summary, device status works/detected/failed, raw logs). Run with
+#   no arguments it is self-sufficient: it opens an existing report, or renders
+#   one from a saved probe, or — if there is nothing yet — runs a hardware probe
+#   (asking for root) and builds the report for you.
+#
+#   Why: the uploaded probe lives on linux-hardware.org behind a URL; this gives
+#   the same data as one readable local file, in one step, no server needed.
+#
+##################################################################################################################
+
+# shellcheck source=/usr/local/lib/kiro-common.sh
+if [[ -f /usr/local/lib/kiro-common.sh ]]; then
+    source /usr/local/lib/kiro-common.sh
+else
+    echo "ERROR: kiro-common.sh not found" >&2
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DRY_RUN=false
+OPEN=false
+PROBE=""
+OUTPUT=""
+
+# Locate the Python generator next to this script's lib, with an installed fallback.
+GENERATOR="$(realpath "${SCRIPT_DIR}/../lib/kiro-probe-report.py" 2>/dev/null || true)"
+[[ -f "${GENERATOR}" ]] || GENERATOR="/usr/local/lib/kiro-probe-report.py"
+
+WORKDIR=""
+INFO_DIR=""
+
+# Resolve a saved probe (.txz or directory) to the directory that holds the 'host'
+# file, storing it in INFO_DIR. Sets INFO_DIR="" when no probe data is found.
+# Must NOT run in a command-substitution subshell: it sets WORKDIR so the EXIT
+# trap can remove any temp dir it extracted into.
+resolve_info_dir() {
+    local src="$1" tmp
+    INFO_DIR=""
+    if [[ "${src}" == *.txz || "${src}" == *.tar.xz ]]; then
+        tmp="$(mktemp -d)"
+        WORKDIR="${tmp}"
+        tar -xf "${src}" -C "${tmp}"
+        if [[ -f "${tmp}/host" ]]; then INFO_DIR="${tmp}";
+        elif [[ -f "${tmp}/hw.info/host" ]]; then INFO_DIR="${tmp}/hw.info"; fi
+    elif [[ -f "${src}/host" ]]; then INFO_DIR="${src}";
+    elif [[ -f "${src}/hw.info/host" ]]; then INFO_DIR="${src}/hw.info"; fi
+}
+
+cleanup() {
+    [[ -n "${WORKDIR}" && -d "${WORKDIR}" ]] && rm -rf "${WORKDIR}"
+    return 0
+}
+trap cleanup EXIT
+
+# Show an XFCE/desktop notification that the report is ready. Only meaningful in
+# the user's session, so the root-run probe instance (no session bus) is skipped.
+notify_ready() {
+    [[ ${EUID} -eq 0 || "${DRY_RUN}" == true ]] && return 0
+    command -v notify-send &>/dev/null || return 0
+    notify-send -a "Kiro" -i computer \
+        "Hardware Probe Report" "Your report is ready in your home directory." 2>/dev/null || true
+}
+
+# Open the report when --open is set, otherwise just print how to open it.
+open_report() {
+    local f="$1"
+    if [[ "${DRY_RUN}" == true ]]; then
+        log_info "[DRY-RUN] Would open: ${f}"
+    elif [[ "${OPEN}" == true ]] && command -v xdg-open &>/dev/null; then
+        xdg-open "${f}" >/dev/null 2>&1 &
+    else
+        log_info "Open with: xdg-open \"${f}\""
+    fi
+}
+
+# Locate the sibling kiro-probe (repo layout or installed path).
+find_kiro_probe() {
+    local p
+    p="$(realpath "${SCRIPT_DIR}/kiro-probe" 2>/dev/null || true)"
+    [[ -x "${p}" ]] && { echo "${p}"; return; }
+    echo "/usr/local/bin/kiro-probe"
+}
+
+# Run a hardware probe (needs root) and let kiro-probe build the report in HOME.
+probe_and_build() {
+    local kiro_probe
+    kiro_probe="$(find_kiro_probe)"
+    log_info "No saved probe or report found."
+    log_info "Running a hardware probe now — this needs root and takes a few minutes..."
+    if [[ "${DRY_RUN}" == true ]]; then
+        log_info "[DRY-RUN] Would run: sudo ${kiro_probe} --save ${HOME}"
+        return 0
+    fi
+    if [[ ${EUID} -eq 0 ]]; then
+        "${kiro_probe}" --save "${HOME}"
+    else
+        sudo "${kiro_probe}" --save "${HOME}"
+    fi
+}
+
+main() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help "$(basename "$0")" \
+                    "Show the hardware probe report; build it (probing if needed) when absent" \
+                    "[--help] [--version] [--dry-run] [--open] [PROBE] [OUTPUT]" \
+                    "    -o, --open          Open the report in the browser when done
+    PROBE               hw.info.txz archive or hw.info directory
+                        (default: an existing report, a saved probe, or a fresh probe)
+    OUTPUT              HTML file to write (default: next to PROBE)"
+                exit 0
+                ;;
+            -v|--version)
+                show_version "$(basename "$0")"
+                exit 0
+                ;;
+            -d|--dry-run)
+                DRY_RUN=true
+                log_info "Dry-run mode enabled — no changes will be made"
+                ;;
+            -o|--open)
+                OPEN=true
+                ;;
+            -*)
+                echo "${RED}Unknown option: $1${RESET}" >&2
+                exit 1
+                ;;
+            *)
+                if [[ -z "${PROBE}" ]]; then PROBE="$1";
+                elif [[ -z "${OUTPUT}" ]]; then OUTPUT="$1";
+                else echo "${RED}Unexpected argument: $1${RESET}" >&2; exit 1; fi
+                ;;
+        esac
+        shift
+    done
+
+    if ! command -v python3 &>/dev/null; then
+        echo "${RED}python3 is required but not found.${RESET}" >&2
+        exit 1
+    fi
+    if [[ ! -f "${GENERATOR}" ]]; then
+        echo "${RED}Generator not found: ${GENERATOR}${RESET}" >&2
+        exit 1
+    fi
+
+    # No probe given: be self-sufficient about getting the user to a report.
+    local from_home=false
+    if [[ -z "${PROBE}" ]]; then
+        local home_report="${HOME}/hw-probe-report.html"
+
+        # 1. A report already exists — just show it.
+        if [[ -f "${home_report}" ]]; then
+            log_info "Report already present: ${home_report}"
+            notify_ready
+            open_report "${home_report}"
+            log_success "$(basename "$0") done"
+            exit 0
+        fi
+
+        # 2. A saved probe exists (current dir or home) — render it, no root needed.
+        if [[ -f "./hw.info.txz" ]]; then PROBE="./hw.info.txz"; from_home=true;
+        elif [[ -d "./hw.info" ]]; then PROBE="./hw.info"; from_home=true;
+        elif [[ -f "${HOME}/hw.info.txz" ]]; then PROBE="${HOME}/hw.info.txz"; from_home=true;
+        elif [[ -d "${HOME}/hw.info" ]]; then PROBE="${HOME}/hw.info"; from_home=true;
+        else
+            # 3. Nothing yet — run a probe (asks for root) and let kiro-probe build it.
+            probe_and_build
+            notify_ready
+            open_report "${home_report}"
+            log_success "$(basename "$0") done"
+            exit 0
+        fi
+    fi
+
+    if [[ ! -e "${PROBE}" ]]; then
+        echo "${RED}Probe not found: ${PROBE}${RESET}" >&2
+        exit 1
+    fi
+
+    resolve_info_dir "${PROBE}"
+    local info_dir="${INFO_DIR}"
+    if [[ -z "${info_dir}" ]]; then
+        echo "${RED}No hw-probe data (a 'host' file) found in: ${PROBE}${RESET}" >&2
+        exit 1
+    fi
+
+    # Default output: alongside the source probe, named hw-probe-report.html.
+    if [[ -z "${OUTPUT}" ]]; then
+        local base
+        if [[ -f "${PROBE}" ]]; then base="$(dirname "${PROBE}")"; else base="$(dirname "$(realpath "${info_dir}")")"; fi
+        OUTPUT="${base}/hw-probe-report.html"
+    fi
+
+    log_section "Generate hardware probe report"
+    log_info "Source : ${PROBE}"
+    log_info "Output : ${OUTPUT}"
+
+    execute_or_dryrun "Render HTML report" python3 "${GENERATOR}" "${info_dir}" "${OUTPUT}"
+
+    # Hand the file back to the invoking user when run via sudo.
+    if [[ "${DRY_RUN}" == false && -n "${SUDO_USER:-}" && -f "${OUTPUT}" ]]; then
+        chown "${SUDO_USER}:${SUDO_USER}" "${OUTPUT}" 2>/dev/null || true
+    fi
+
+    [[ "${from_home}" == true ]] && notify_ready
+    open_report "${OUTPUT}"
+    log_success "$(basename "$0") done"
+}
+
+main "$@"

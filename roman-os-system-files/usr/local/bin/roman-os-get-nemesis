@@ -1,0 +1,72 @@
+#!/bin/bash
+set -Euo pipefail
+##################################################################################################################
+# Author    : Erik Dubois
+# Website   : https://kiroproject.be
+##################################################################################################################
+#
+#   DO NOT JUST RUN THIS. EXAMINE AND JUDGE. RUN AT YOUR OWN RISK.
+#
+#   Purpose:
+#   Clones the arcolinux-nemesis repository to ~/DATA so the user has
+#   the orchestrator script that bootstraps a fresh Arch install with
+#   the nemesis + chaotic repos and Erik's package set.
+#
+#   Why: without arcolinux-nemesis checked out locally, a new install
+#   can't run the canonical bootstrap; this turns it into a one-command
+#   setup.
+#
+##################################################################################################################
+
+# shellcheck source=/usr/local/lib/kiro-common.sh
+if [[ -f /usr/local/lib/kiro-common.sh ]]; then
+    source /usr/local/lib/kiro-common.sh
+else
+    echo "ERROR: kiro-common.sh not found" >&2
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DRY_RUN=false
+
+main() {
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help)
+                show_help "$(basename "$0")" \
+                    "Clone the arcolinux-nemesis repository to ~/DATA" \
+                    "[--help] [--version] [--dry-run]" \
+                    ""
+                exit 0
+                ;;
+            -v|--version)
+                show_version "$(basename "$0")"
+                exit 0
+                ;;
+            -d|--dry-run)
+                DRY_RUN=true
+                log_info "Dry-run mode enabled — no changes will be made"
+                ;;
+            *)
+                echo "${RED}Unknown option: $arg${RESET}" >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    log_section "Clone arcolinux-nemesis"
+
+    if test -f /usr/bin/git; then
+        log_info "git is present"
+    else
+        log_info "Installing git"
+        execute_or_dryrun "Install git" sudo pacman -S git --noconfirm
+    fi
+
+    [ -d "$HOME/DATA" ] || mkdir -p "$HOME/DATA"
+    execute_or_dryrun "Clone arcolinux-nemesis to ~/DATA" git -C "$HOME/DATA" clone https://github.com/erikdubois/arcolinux-nemesis
+
+    log_success "$(basename "$0") done"
+}
+
+main "$@"

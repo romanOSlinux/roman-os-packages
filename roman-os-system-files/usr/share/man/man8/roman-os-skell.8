@@ -1,0 +1,92 @@
+.TH KIRO-SKELL 8 "2026-05-31" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-skell \- copy /etc/skel to the home directory, backing up only the configs it overwrites
+.SH SYNOPSIS
+.B kiro-skell
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-skell
+copies the system skeleton directory
+.RI ( /etc/skel )
+into the current user's home directory.
+This brings new default configuration files into use without losing
+existing customisations permanently.
+.PP
+Before copying,
+.B kiro-skell
+backs up only the
+.I ~/.config
+entries that
+.I /etc/skel/.config
+will overwrite \(em not the whole
+.IR ~/.config ,
+which can hold gigabytes of browser and application cache. The subset is
+copied to
+.I ~/.config-backup-YYYY.MM.DD-HH.MM.SS/.config/
+so the previous state of the overwritten configs can be restored. This is
+the fast default; for a complete
+.I ~/.config
+backup, see
+.BR kiro-skell-all (8).
+.PP
+The
+.I /etc/skel
+copy step itself is unchanged \(em it still overwrites everything.
+.PP
+In interactive mode (no
+.BR \-\-dry\-run )
+the user is prompted to confirm before any files are touched.
+In
+.B \-\-dry\-run
+mode the confirmation prompt is skipped and only the commands are
+displayed.
+.PP
+Useful when a tiling window manager is crashing: run
+.B kiro-skell
+in a TTY to restore default configs without needing a graphical session.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+Skips the interactive confirmation prompt.
+.SH FILES
+.TP
+.I /etc/skel/
+Source skeleton directory.
+.TP
+.I ~/.config/
+The entries matching
+.I /etc/skel/.config
+are backed up before overwriting.
+.TP
+.I ~/.config-backup-YYYY.MM.DD-HH.MM.SS/
+Timestamped backup created by this script.
+.SH EXAMPLES
+Preview what would be copied:
+.PP
+.RS 4
+.EX
+kiro-skell --dry-run
+.EE
+.RE
+.PP
+Run interactively:
+.PP
+.RS 4
+.EX
+kiro-skell
+.EE
+.RE
+.SH SEE ALSO
+.BR kiro-skell-all (8),
+.BR cp (1)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

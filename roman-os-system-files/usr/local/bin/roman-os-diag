@@ -1,0 +1,391 @@
+#!/bin/bash
+set -Euo pipefail
+##################################################################################################################
+# Author    : Erik Dubois
+# Website   : https://kiroproject.be
+##################################################################################################################
+#
+#   DO NOT JUST RUN THIS. EXAMINE AND JUDGE. RUN AT YOUR OWN RISK.
+#
+#   Purpose:
+#   Prints Kiro system diagnostic information — ISO version, kernel,
+#   BIOS/UEFI mode, mounted filesystems, display manager, X11/Wayland
+#   session, installed/running kernels, NVIDIA driver/package status.
+#
+#   Why: single-command snapshot of system state for support,
+#   troubleshooting, and the kiro-diag page planned in ATT.
+#
+##################################################################################################################
+
+# shellcheck source=/usr/local/lib/kiro-common.sh
+if [[ -f /usr/local/lib/kiro-common.sh ]]; then
+    source /usr/local/lib/kiro-common.sh
+else
+    echo "ERROR: kiro-common.sh not found" >&2
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+_field() {
+    printf "  ${BOLD}%-26s${RESET} %s\n" "${1}:" "${2}"
+}
+
+##################################################################################################################
+# Sections
+##################################################################################################################
+
+section_system() {
+    log_subsection "System"
+
+    if [[ -f /etc/dev-rel ]]; then
+        local release codename build
+        release=$(grep '^ISO_RELEASE=' /etc/dev-rel | cut -d= -f2-)
+        codename=$(grep '^ISO_CODENAME=' /etc/dev-rel | cut -d= -f2-)
+        build=$(grep '^ISO_BUILD=' /etc/dev-rel | cut -d= -f2-)
+        _field "ISO release" "$release"
+        _field "ISO codename" "$codename"
+        _field "ISO build" "$build"
+    else
+        _field "ISO" "(no /etc/dev-rel)"
+    fi
+
+    [[ -d /sys/firmware/efi ]] && _field "Firmware" "UEFI" || _field "Firmware" "BIOS/Legacy"
+
+    _field "Uptime" "$(uptime -p)"
+
+    local virt
+    virt=$(systemd-detect-virt 2>/dev/null || echo "unknown")
+    [[ "$virt" == "none" ]] && virt="bare metal"
+    _field "Virtualization" "$virt"
+
+    _field "Timezone" "$(timedatectl show --property=Timezone --value 2>/dev/null || echo 'unknown')"
+    _field "Locale" "$(localectl status 2>/dev/null | awk '/System Locale:/{print $3}')"
+
+    local pkg
+    pkg=$(pacman -Qqo "/usr/local/bin/$(basename "${BASH_SOURCE[0]}")" 2>/dev/null) \
+        && _field "Kiro package" "$(pacman -Q "$pkg")" \
+        || _field "Kiro package" "not installed via pacman"
+}
+
+section_hardware() {
+    log_subsection "Hardware"
+
+    local cpu cores
+    cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | xargs)
+    cores=$(grep -c '^processor' /proc/cpuinfo)
+    _field "CPU" "$cpu ($cores threads)"
+
+    local mem_total mem_avail
+    mem_total=$(free -h --si | awk '/^Mem:/{print $2}')
+    mem_avail=$(free -h --si | awk '/^Mem:/{print $7}')
+    _field "RAM" "${mem_total} total, ${mem_avail} available"
+
+    echo
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS 2>/dev/null \
+        | grep -v '^loop' \
+        | sed 's/^/  /' \
+        || true
+}
+
+section_gpu() {
+    log_subsection "GPU"
+
+    local intel_gpu
+    intel_gpu=$(lspci | grep -iE 'vga|3d|display' | grep -i intel | head -1 | sed 's/.*: //' || true)
+    if [[ -n "$intel_gpu" ]]; then
+        local intel_driver
+        intel_driver=$(lspci -nnk | grep -A5 -i intel | grep -i 'kernel driver' | head -1 | cut -d: -f2 | xargs || echo "none")
+        _field "Intel GPU" "$intel_gpu"
+        _field "Intel driver" "$intel_driver"
+    else
+        _field "Intel GPU" "not detected"
+    fi
+
+    local amd_gpu
+    amd_gpu=$(lspci | grep -iE 'vga|3d|display' | grep -iE 'amd|radeon|advanced micro' | head -1 | sed 's/.*: //' || true)
+    if [[ -n "$amd_gpu" ]]; then
+        local amd_driver
+        amd_driver=$(lspci -nnk | grep -A5 -iE 'amd|radeon' | grep -i 'kernel driver' | head -1 | cut -d: -f2 | xargs || echo "none")
+        _field "AMD GPU" "$amd_gpu"
+        _field "AMD driver" "$amd_driver"
+    else
+        _field "AMD GPU" "not detected"
+    fi
+
+    local nvidia_gpu
+    nvidia_gpu=$(lspci | grep -iE 'vga|3d|display' | grep -i nvidia | head -1 | sed 's/.*: //' || true)
+    if [[ -n "$nvidia_gpu" ]]; then
+        local nvidia_driver
+        nvidia_driver=$(lspci -nnk | grep -A5 -i nvidia | grep -i 'kernel driver' | head -1 | cut -d: -f2 | xargs || echo "none")
+        _field "NVIDIA GPU" "$nvidia_gpu"
+        _field "NVIDIA driver" "${nvidia_driver:-none loaded}"
+
+        local nvidia_pkgs
+        nvidia_pkgs=$(pacman -Q 2>/dev/null | grep -i nvidia | awk '{print $1}' | tr '\n' ' ' | xargs || true)
+        _field "NVIDIA packages" "${nvidia_pkgs:-none}"
+
+        local modeset="not set"
+        if grep -q "nvidia-drm.modeset=1" /proc/cmdline 2>/dev/null; then
+            modeset="yes (active this boot)"
+        elif [[ -f /etc/kernel/cmdline ]] && grep -q "nvidia-drm.modeset=1" /etc/kernel/cmdline; then
+            modeset="yes (systemd-boot, not active this boot)"
+        elif [[ -f /etc/default/grub ]] && grep -q "nvidia-drm.modeset=1" /etc/default/grub; then
+            modeset="yes (grub, not active this boot)"
+        fi
+        _field "nvidia-drm.modeset" "$modeset"
+    else
+        _field "NVIDIA GPU" "not detected"
+    fi
+}
+
+section_storage() {
+    log_subsection "Storage"
+
+    local mounts
+    mounts=$(mount | grep '^/dev' | awk '{print $1 "(" $5 ")"}' | tr '\n' '  ')
+    _field "Mounted" "$mounts"
+
+    echo
+    df -h --output=target,fstype,size,used,avail,pcent 2>/dev/null \
+        | grep -v '^tmpfs\|^devtmpfs\|^efivarfs\|^Filesystem\|^/dev/loop' \
+        | awk 'NR==1{print "  "$0} NR>1{print "  "$0}' \
+        || true
+    echo
+
+    local swap
+    swap=$(free -h --si | awk '/^Swap:/{print $2 " total, " $3 " used, " $4 " free"}')
+    _field "Swap" "${swap:-none}"
+}
+
+section_network() {
+    log_subsection "Network"
+
+    while IFS= read -r line; do
+        local iface state addr
+        iface=$(awk '{print $1}' <<< "$line")
+        state=$(awk '{print $2}' <<< "$line")
+        addr=$(awk '{print $3}' <<< "$line")
+        _field "$iface  [$state]" "${addr:-(no address)}"
+    done < <(ip -br addr show | grep -v '^lo' || true)
+
+    local fw_status
+    if ! command -v firewall-cmd &>/dev/null; then
+        fw_status="not installed"
+    else
+        local en act
+        systemctl is-enabled firewalld &>/dev/null && en="enabled" || en="disabled"
+        systemctl is-active --quiet firewalld 2>/dev/null && act="active" || act="inactive"
+        fw_status="$en, $act"
+    fi
+    _field "Firewall (firewalld)" "$fw_status"
+}
+
+section_desktop() {
+    log_subsection "Desktop"
+
+    local dm="none detected"
+    for d in sddm lxdm gdm lightdm ly; do
+        if systemctl is-active --quiet "$d" 2>/dev/null; then
+            dm="$d"; break
+        fi
+    done
+    _field "Display manager" "$dm"
+
+    local wm="unknown"
+    for w in ohmychadwm chadwm dwm bspwm i3 openbox xfwm4 kwin_x11 kwin_wayland mutter gnome-shell sway hyprland; do
+        if pgrep -x "$w" &>/dev/null; then
+            wm="$w"; break
+        fi
+    done
+    _field "Window manager" "$wm"
+
+    local x11_sessions
+    x11_sessions=$(ls /usr/share/xsessions 2>/dev/null | tr '\n' ' ' | xargs || echo "none")
+    _field "X11 sessions" "$x11_sessions"
+
+    local wayland_sessions
+    wayland_sessions=$(ls /usr/share/wayland-sessions 2>/dev/null | tr '\n' ' ' | xargs || echo "none")
+    _field "Wayland sessions" "$wayland_sessions"
+}
+
+section_kernel() {
+    log_subsection "Kernel"
+
+    local installed
+    installed=$(ls /usr/lib/modules 2>/dev/null | tr '\n' '  ' | xargs || echo "none")
+    _field "Installed" "$installed"
+
+    _field "Running" "$(uname -r)"
+    _field "Version" "$(grep -oP 'Linux version \S+' /proc/version | head -1)"
+
+    local governor="unknown"
+    local gov_file
+    gov_file=$(ls /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || true)
+    [[ -f "$gov_file" ]] && governor=$(cat "$gov_file")
+    _field "CPU governor" "$governor"
+
+    _field "Kernel cmdline" "$(cat /proc/cmdline)"
+}
+
+# Detect the active bootloader from on-disk evidence on the ESP, not from
+# efibootmgr labels: a systemd-boot install reached via the removable fallback
+# path (\EFI\BOOT\BOOTX64.EFI) shows up only as "UEFI OS", and package presence
+# lies too (Kiro ships grub + refind even when systemd-boot is what boots).
+_bl_ver() { pacman -Q "$1" 2>/dev/null | awk '{print $2}' || echo 'installed'; }
+
+section_boot() {
+    log_subsection "Bootloader"
+
+    # bootctl -p resolves the ESP regardless of layout (/efi, /boot, /boot/efi).
+    local bl="unknown" esp
+    esp="$(bootctl -p 2>/dev/null || true)"
+    if [[ -z "$esp" ]]; then
+        local cand
+        for cand in /efi /boot/efi /boot; do
+            [[ -d "$cand/EFI" ]] && { esp="$cand"; break; }
+        done
+    fi
+
+    if [[ -d /sys/firmware/efi ]]; then
+        if [[ "$(bootctl is-installed 2>/dev/null || true)" == yes ]] \
+            || [[ -n "$esp" && -e "$esp/EFI/systemd/systemd-bootx64.efi" ]] \
+            || [[ -n "$esp" && -e "$esp/loader/loader.conf" ]]; then
+            bl="systemd-boot ($(_bl_ver systemd))"
+        elif [[ -n "$esp" ]] && { [[ -e "$esp/EFI/refind/refind.conf" ]] || compgen -G "$esp/EFI/refind/refind*.efi" >/dev/null; }; then
+            bl="rEFInd ($(_bl_ver refind))"
+        elif { [[ -n "$esp" ]] && { compgen -G "$esp/EFI/*/limine*.efi" >/dev/null || [[ -e "$esp/limine.conf" ]]; }; } \
+            || [[ -e /boot/limine.conf || -e /boot/limine.cfg ]]; then
+            bl="Limine ($(_bl_ver limine))"
+        elif { [[ -n "$esp" ]] && compgen -G "$esp/EFI/*/grub*.efi" >/dev/null; } || [[ -e /boot/grub/grub.cfg ]]; then
+            bl="GRUB ($(_bl_ver grub))"
+        fi
+    else
+        if [[ -e /boot/grub/grub.cfg ]]; then
+            bl="GRUB (legacy BIOS)"
+        elif [[ -e /boot/limine.cfg || -e /boot/limine.conf ]]; then
+            bl="Limine (legacy BIOS)"
+        fi
+    fi
+    _field "Bootloader" "$bl"
+}
+
+section_packages() {
+    log_subsection "Packages"
+
+    local total
+    total=$(pacman -Q 2>/dev/null | wc -l)
+    _field "Installed" "$total packages"
+
+    for h in paru yay; do
+        if command -v "$h" &>/dev/null; then
+            local hver
+            hver=$(pacman -Q "$h" 2>/dev/null | awk '{print $2}' || echo "installed")
+            _field "AUR helper: $h" "ok ($hver)"
+        else
+            _field "AUR helper: $h" "not installed"
+        fi
+    done
+}
+
+section_audio() {
+    log_subsection "Audio"
+
+    if pgrep -x pipewire &>/dev/null; then
+        local pw_ver
+        pw_ver=$(pacman -Q pipewire 2>/dev/null | awk '{print $2}' || echo "installed")
+        _field "PipeWire" "running ($pw_ver)"
+        if pgrep -x pipewire-pulse &>/dev/null; then
+            _field "pipewire-pulse" "running (PulseAudio compat active)"
+        else
+            _field "pipewire-pulse" "not running"
+        fi
+        if pgrep -x wireplumber &>/dev/null; then
+            local wp_ver
+            wp_ver=$(pacman -Q wireplumber 2>/dev/null | awk '{print $2}' || echo "installed")
+            _field "WirePlumber" "running ($wp_ver)"
+        fi
+    elif pgrep -x pulseaudio &>/dev/null; then
+        local pa_ver
+        pa_ver=$(pacman -Q pulseaudio 2>/dev/null | awk '{print $2}' || echo "installed")
+        _field "PulseAudio" "running ($pa_ver)"
+    else
+        _field "Audio server" "none detected (ALSA only?)"
+    fi
+}
+
+section_bluetooth() {
+    log_subsection "Bluetooth"
+
+    if systemctl is-active --quiet bluetooth 2>/dev/null; then
+        _field "Service" "active"
+        # bluetoothctl talks to bluetoothd over D-Bus and can block indefinitely
+        # (e.g. a wedged adapter), so cap it with a timeout.
+        local adapter
+        adapter=$(timeout 3 bluetoothctl show 2>/dev/null | grep -E 'Name:|Powered:|Discoverable:' | sed 's/^\s*//' | tr '\n' '  ' || true)
+        _field "Adapter" "${adapter:-none found}"
+    else
+        # Service down means no daemon to answer — bluetoothctl would hang, so skip it.
+        _field "Service" "inactive"
+        _field "Adapter" "(bluetooth service inactive)"
+    fi
+}
+
+section_temps() {
+    log_subsection "Temperatures"
+
+    if command -v sensors &>/dev/null; then
+        echo
+        sensors 2>/dev/null | grep -E '°C|temp|fan|rpm' | sed 's/^/  /' || echo "  (no sensor data)"
+        echo
+    else
+        _field "sensors" "lm_sensors not installed"
+    fi
+}
+
+##################################################################################################################
+# Main
+##################################################################################################################
+
+main() {
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help)
+                show_help "$(basename "$0")" \
+                    "Display Kiro system diagnostic information" \
+                    "[--help] [--version]" \
+                    ""
+                exit 0
+                ;;
+            -v|--version)
+                show_version "$(basename "$0")"
+                exit 0
+                ;;
+            *)
+                echo "${RED}Unknown option: $arg${RESET}" >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    ensure_root "$@"
+
+    log_section "Kiro System Diagnostics"
+
+    section_system
+    section_boot
+    section_hardware
+    section_gpu
+    section_storage
+    section_network
+    section_audio
+    section_bluetooth
+    section_desktop
+    section_kernel
+    section_temps
+    section_packages
+
+    log_success "$(basename "$0") done"
+}
+
+main "$@"

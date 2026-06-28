@@ -1,0 +1,42 @@
+.TH KIRO-INSTALL-TOOLS 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-install-tools \- install a curated set of development and desktop tools
+.SH SYNOPSIS
+.B kiro-install-tools
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-install-tools
+refreshes the pacman sync databases and installs the following packages:
+.PP
+.RS 4
+sublime-text-4, ripgrep, meld, thunar, thunar-archive-plugin, thunar-volman
+.RE
+.PP
+All installs use
+.B \-\-needed
+so already-installed packages are skipped.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+.SH FILES
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-install-tools --dry-run
+kiro-install-tools
+.EE
+.SH SEE ALSO
+.BR pacman (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

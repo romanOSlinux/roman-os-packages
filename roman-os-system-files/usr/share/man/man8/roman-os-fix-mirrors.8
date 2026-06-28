@@ -1,0 +1,52 @@
+.TH KIRO-FIX-MIRRORS 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-fix-mirrors \- rank and update the pacman mirrorlist using rate-mirrors
+.SH SYNOPSIS
+.B kiro-fix-mirrors
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-fix-mirrors
+uses
+.BR rate-mirrors (1)
+to benchmark Arch Linux mirrors and write the fastest ones to
+.IR /etc/pacman.d/mirrorlist .
+Comments are stripped from the output file.
+.PP
+Requires the
+.B rate-mirrors
+package to be installed.
+Use
+.BR kiro-get-mirrors (8)
+for the
+.BR reflector (1)
+alternative.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+.SH FILES
+.TP
+.I /etc/pacman.d/mirrorlist
+Mirror list written by this script.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-fix-mirrors --dry-run
+kiro-fix-mirrors
+.EE
+.SH SEE ALSO
+.BR kiro-get-mirrors (8),
+.BR rate-mirrors (1),
+.BR pacman (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

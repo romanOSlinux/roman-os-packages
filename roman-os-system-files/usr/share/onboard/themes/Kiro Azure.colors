@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+
+<!-- Kiro Azure color scheme. White labels on azure keys over a deep navy field. -->
+
+<color_scheme name="Kiro Azure" format="2.1">
+    <window type="key-popup">
+        <color element="border" rgb="#38bdf8" opacity="1.0"/>
+    </window>
+
+    <layer> <color element="background" rgb="#04101f" opacity="1.0"/> </layer>
+    <layer> <color element="background" rgb="#082140" opacity="0.92"/> </layer>
+    <layer> <color element="background" rgb="#0a2a52" opacity="0.92"/> </layer>
+
+    <key_group>
+        <color element="fill"   rgb="#2563eb"/>
+        <color element="stroke" rgb="#020a14"/>
+        <color element="label"  rgb="#ffffff"/>
+        icon0
+
+        <key_group>
+            <color element="fill" rgb="#dbeafe"/>
+            <color element="label" rgb="#04101f"/>
+            icon1, icon2
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#1e3a8a"/>
+            icon3,
+            RCTL, LCTL, RALT, LALT, LWIN, CAPS,
+            LFSH, RTSH, NMLK, ESC
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#1e40af"/>
+            MENU, RWIN, BKSP, TAB, RTRN,
+            KPDL, KPEN,
+            LEFT, RGHT, UP, DOWN, INS, DELE, HOME, END, PGUP, PGDN,
+            F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
+            Prnt, Pause, Scroll,
+            KPSU, KPDV KPAD, KPMU,
+            secondaryclick, middleclick, doubleclick, dragclick, hoverclick,
+            hide, showclick, move, layer,
+            quit
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#1d4ed8"/>
+            m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15
+        </key_group>
+
+        <key_group>
+            <color element="fill" rgb="#f43f5e"/>
+            <color element="label" rgb="#ffffff"/>
+            settings
+        </key_group>
+
+        <!-- word suggestions -->
+        <key_group>
+            <color element="fill" rgb="#0a2a52"/>
+            wordlist, prediction
+        </key_group>
+    </key_group>
+</color_scheme>

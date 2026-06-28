@@ -1,0 +1,49 @@
+.TH KIRO-FIX-GPG-CONF 8 "2026-05-19" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-fix-gpg-conf \- copy the Kiro gpg.conf to /etc/pacman.d/gnupg/
+.SH SYNOPSIS
+.B kiro-fix-gpg-conf
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-d\fR|\fB\-\-dry\-run\fR]
+.SH DESCRIPTION
+.B kiro-fix-gpg-conf
+copies the pre-configured
+.I gpg.conf
+shipped by Kiro from its local store into the pacman GPG directory.
+If the source file is absent the script warns and exits cleanly.
+.PP
+This is a companion to
+.BR kiro-fix-pacman-keys (8):
+use it when you want to restore a known-good GPG configuration without
+performing a full keyring rebuild.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show what would be executed without making any changes.
+.SH FILES
+.TP
+.I /usr/local/share/kiro/gpg.conf
+Source file shipped by the Kiro package.
+.TP
+.I /etc/pacman.d/gnupg/gpg.conf
+Destination: pacman GPG configuration.
+.TP
+.I /usr/local/lib/kiro-common.sh
+Shared library.
+.SH EXAMPLES
+.EX
+kiro-fix-gpg-conf --dry-run
+kiro-fix-gpg-conf
+.EE
+.SH SEE ALSO
+.BR kiro-fix-pacman-keys (8),
+.BR gpg (1)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

@@ -1,0 +1,69 @@
+.TH KIRO-AUDIT 8 "2026-05-28" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-audit \- comprehensive post-install audit of a Kiro system
+.SH SYNOPSIS
+.B kiro-audit
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+.SH DESCRIPTION
+.B kiro-audit
+performs a structured PASS/WARN/FAIL audit of a Kiro system after installation.
+It prints a summary with totals and exits non-zero if any check fails.
+.PP
+Checks performed:
+.IP \(bu 4
+Kernel: installed kernel(s) detected at runtime via /usr/lib/modules/*/pkgbase (linux-lqx, linux-zen, linux-hardened, ...); vmlinuz, initramfs, package, and headers verified per kernel
+.IP \(bu 4
+Microcode: correct vendor image in /boot, opposite vendor not installed
+.IP \(bu 4
+mkinitcpio: no archiso hook, microcode and kms hooks present, per-kernel mkinitcpio preset exists
+.IP \(bu 4
+Audio: PipeWire stack complete, pulseaudio absent
+.IP \(bu 4
+Calamares cleanup: calamares, mkinitcpio-archiso, and live-only artifacts removed
+.IP \(bu 4
+kiro_final config: /root permissions, sudoers, makepkg.conf, Bluetooth AutoEnable
+.IP \(bu 4
+Pacman repos: nemesis_repo and chaotic-aur present, cachyos commented out in pacman.conf
+.IP \(bu 4
+Desktop: ohmychadwm and xfwm4 installed, session desktop files present
+.IP \(bu 4
+SDDM: installed, enabled, edu-simplicity theme set
+.IP \(bu 4
+Kiro Plasma (only when Plasma is installed): for each installed kiro-plasma-* package, the config it ships under /etc/xdg and /etc/skel is present, and the UID 1000 user's effective settings (cursor, colour scheme, icons, widget style, window decoration) match the active Kiro look-and-feel
+.IP \(bu 4
+User groups: UID 1000 user in wheel, audio, video, storage, optical, network
+.IP \(bu 4
+Services: NetworkManager, sddm, bluetooth enabled; pacman-init not enabled
+.IP \(bu 4
+Permissions: /etc/shadow and /etc/gshadow at 400
+.IP \(bu 4
+ISO version: /etc/dev-rel present
+.IP \(bu 4
+NVIDIA: driver and utils installed only when GPU is detected
+.IP \(bu 4
+Bootloader: correct for UEFI or BIOS
+.IP \(bu 4
+Package integrity: no missing files (pacman -Qk)
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit (does not require root).
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit (does not require root).
+.SH EXIT STATUS
+.TP
+.B 0
+All checks passed (or warnings only).
+.TP
+.B 1
+One or more checks failed, or insufficient privileges.
+.SH NOTES
+Must be run as root:
+.B sudo kiro-audit
+.SH SEE ALSO
+.BR kiro-verify (8),
+.BR pacman (8)
+.SH AUTHOR
+Erik Dubois <https://www.erikdubois.be>

@@ -1,0 +1,87 @@
+.TH KIRO-REPORT 8 "2026-06-01" "Kiro" "Kiro System Tools"
+.SH NAME
+kiro-report \- generate a public-safe Kiro diagnostic report for Kiro Discussions
+.SH SYNOPSIS
+.B kiro-report
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-v\fR|\fB\-\-version\fR]
+[\fB\-o\fR|\fB\-\-output\fR \fIPATH\fR]
+[\fB\-c\fR|\fB\-\-copy\fR]
+.SH DESCRIPTION
+.B kiro-report
+produces a single log file a user can paste into the Kiro Discussions board
+when asking for help. It reuses the full
+.BR kiro-diag (8)
+snapshot, adds the dynamic failure evidence a maintainer needs to debug, then
+.B redacts
+every system-identifying value before writing the file, so it is safe to share
+on a public board.
+.PP
+The report contains:
+.IP \(bu 4
+The complete
+.BR kiro-diag (8)
+snapshot (hardware, GPU, kernel, desktop, network, ...)
+.IP \(bu 4
+Graphics driver packages with versions: Xorg
+.I xf86-video-*
+and
+.IR xf86-input-* ,
+Mesa, Vulkan, VA-API/VDPAU, NVIDIA
+.IP \(bu 4
+The full list of explicitly-installed packages
+.RI ( pacman\ -Qe )
+.IP \(bu 4
+Failed systemd units
+.IP \(bu 4
+Journal errors of this boot (priority err and above)
+.IP \(bu 4
+Kernel ring-buffer errors
+.RI ( dmesg )
+.IP \(bu 4
+Recent pacman transactions from
+.I /var/log/pacman.log
+.IP \(bu 4
+The Calamares install log
+.RI ( /var/log/Calamares.log ),
+when present
+.SH REDACTION
+Before the file is written, the following are replaced with placeholders:
+IPv4/IPv6 addresses, MAC addresses, UUIDs, the systemd machine-id, the
+hostname, and the current username (including
+.IR /home/<user> ).
+Automated scrubbing is never perfect \(em review the file once before posting.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit (does not require root).
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit (does not require root).
+.TP
+.BR \-o ", " \-\-output " " \fIPATH\fR
+Write the report to
+.I PATH
+instead of the default
+.IR ~/kiro-report-YYYYMMDD-HHMMSS.log .
+.TP
+.BR \-c ", " \-\-copy
+Also copy the report to the clipboard, wrapped in a Markdown
+.RB ( ``` )
+code fence so it pastes straight into a Discussions code block. The session
+clipboard is reached as the invoking user; needs
+.B wl-copy
+on Wayland or
+.B xclip
+/
+.B xsel
+on X11, and a running graphical session.
+.SH NOTES
+Must be run as root (it re-runs itself via polkit/sudo as needed):
+.B sudo kiro-report
+.SH SEE ALSO
+.BR kiro-diag (8),
+.BR kiro-audit (8),
+.BR kiro-verify (8)
+.SH AUTHOR
+Erik Dubois <https://kiroproject.be>

@@ -1,0 +1,110 @@
+#!/bin/bash
+set -Euo pipefail
+##################################################################################################################
+# Author    : Erik Dubois
+# Website   : https://kiroproject.be
+##################################################################################################################
+#
+#   DO NOT JUST RUN THIS. EXAMINE AND JUDGE. RUN AT YOUR OWN RISK.
+#
+#   Purpose:
+#   Refreshes the pacman database, installs openssh, enables the sshd
+#   service, allows SSH through firewalld, and (on the live ISO only)
+#   sets a password for the passwordless `liveuser` so sshd's password
+#   auth becomes usable.
+#
+#   Why: SSH isn't enabled by default in the Kiro ISO for security;
+#   this is the one-command opt-in for users who want remote access.
+#   firewalld's default zone already permits ssh, but allowing it
+#   explicitly keeps the opt-in working on hardened or non-default zones.
+#   On the live ISO, liveuser ships with no password — without one,
+#   sshd's password auth refuses the login even when the daemon is up.
+#
+##################################################################################################################
+
+# shellcheck source=/usr/local/lib/kiro-common.sh
+if [[ -f /usr/local/lib/kiro-common.sh ]]; then
+    source /usr/local/lib/kiro-common.sh
+else
+    echo "ERROR: kiro-common.sh not found" >&2
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DRY_RUN=false
+
+main() {
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help)
+                show_help "$(basename "$0")" \
+                    "Install openssh, enable sshd, and allow SSH through the firewall" \
+                    "[--help] [--version] [--dry-run]" \
+                    ""
+                exit 0
+                ;;
+            -v|--version)
+                show_version "$(basename "$0")"
+                exit 0
+                ;;
+            -d|--dry-run)
+                DRY_RUN=true
+                log_info "Dry-run mode enabled — no changes will be made"
+                ;;
+            *)
+                echo "${RED}Unknown option: $arg${RESET}" >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    ensure_root "$@"
+
+    log_section "Enabling SSH"
+
+    log_subsection "Refreshing pacman database"
+    # Live ISO ships a seeded /var/lib/pacman/sync/ that may be empty or stale;
+    # always refresh first so `pacman -S openssh` succeeds without manual `-Sy`.
+    execute_or_dryrun "Refresh pacman database" pacman -Sy --noconfirm
+
+    log_subsection "Installing openssh"
+    execute_or_dryrun "Install openssh" pacman -S openssh --noconfirm
+
+    log_subsection "Enabling and starting sshd"
+    execute_or_dryrun "Enable sshd" systemctl enable --now sshd
+
+    log_subsection "Allowing SSH through the firewall"
+    if command -v firewall-cmd >/dev/null 2>&1; then
+        # firewall-cmd (even --permanent) needs the daemon over D-Bus; when it's
+        # not running — e.g. on the live ISO — use firewall-offline-cmd instead.
+        if systemctl is-active --quiet firewalld; then
+            execute_or_dryrun "Allow ssh service in firewalld (permanent)" \
+                firewall-cmd --permanent --add-service=ssh
+            execute_or_dryrun "Reload firewalld" firewall-cmd --reload
+        elif command -v firewall-offline-cmd >/dev/null 2>&1; then
+            log_info "firewalld not running — applying permanent rule offline"
+            execute_or_dryrun "Allow ssh service in firewalld (offline)" \
+                firewall-offline-cmd --add-service=ssh
+        else
+            log_info "firewalld not running — nothing is blocking SSH, skipping firewall rule"
+        fi
+    else
+        log_info "firewalld not installed — skipping firewall rule"
+    fi
+
+    log_subsection "Setting liveuser password (live ISO only)"
+    # On the live ISO, liveuser has no password set, so sshd's password auth
+    # refuses the login. Detect the live ISO via /run/archiso/bootmnt (the
+    # mount point archiso always creates) and set 'erik' as the password.
+    # On an installed system /run/archiso/bootmnt doesn't exist → this is a no-op.
+    if [[ -d /run/archiso/bootmnt ]] && id -u liveuser >/dev/null 2>&1; then
+        execute_or_dryrun "Set liveuser password to 'erik'" \
+            bash -c "echo 'liveuser:erik' | chpasswd"
+    else
+        log_info "Not on live ISO (or no liveuser) — skipping liveuser password setup"
+    fi
+
+    log_success "$(basename "$0") done"
+}
+
+main "$@"

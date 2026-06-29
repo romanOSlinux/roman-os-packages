@@ -1,0 +1,20 @@
+# Maintainer: Roman <romanOSlinux>
+pkgname=roman-os-xfce
+pkgver=1.0
+pkgrel=1
+pkgdesc="Configuración y personalización del escritorio XFCE para roman-os (portado desde Kiro)"
+arch=('any')
+url="https://github.com/romanOSlinux/roman-os-packages"
+license=('GPL3')
+provides=('kiro-xfce')
+conflicts=('kiro-xfce')
+depends=('xfce4' 'xfce4-goodies')
+source=()
+sha256sums=()
+
+package() {
+    cd "$srcdir/.."
+    
+    # Instalamos la configuración de usuario (skel) en el sistema base
+    cp -r etc "$pkgdir/" 2>/dev/null || true
+}

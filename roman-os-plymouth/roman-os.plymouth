@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Roman OS
+Description=Roman OS Plymouth Theme
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/roman-os
+ScriptFile=/usr/share/plymouth/themes/roman-os/roman-os.script

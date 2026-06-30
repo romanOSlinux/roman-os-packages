@@ -1,0 +1,38 @@
+Window.GetMaxWidth = fun (){
+  i = 0;
+  width = 0;
+  while (Plymouth.Displays[i]){
+    width = Math.Max(width, Plymouth.Displays[i].ImageWidth);
+    i++;
+  }
+  return width;
+};
+
+Window.GetMaxHeight = fun (){
+  i = 0;
+  height = 0;
+  while (Plymouth.Displays[i]){
+    height = Math.Max(height, Plymouth.Displays[i].ImageHeight);
+    i++;
+  }
+  return height;
+};
+
+logo_image = Image("roman-os-logo.png");
+
+fun refresh_callback () {
+  # Do nothing, static image
+}
+Plymouth.SetRefreshFunction (refresh_callback);
+
+fun display_setup() {
+    # Center logo
+    logo_sprite = Sprite(logo_image);
+    logo_sprite.SetX(Window.GetMaxWidth() / 2 - logo_image.GetWidth() / 2);
+    logo_sprite.SetY(Window.GetMaxHeight() / 2 - logo_image.GetHeight() / 2);
+    logo_sprite.SetZ(10000);
+}
+
+Plymouth.SetDisplayNormalFunction(display_setup);
+Plymouth.SetQuitFunction(fun() {});
+Plymouth.SetMessageFunction(fun(text) {});

@@ -8,7 +8,7 @@ url="https://github.com/romanOSlinux/roman-os-packages"
 license=('GPL3')
 provides=('kiro-xfce')
 conflicts=('kiro-xfce')
-depends=('xfce4' 'xfce4-goodies')
+depends=()
 source=()
 sha256sums=()
 

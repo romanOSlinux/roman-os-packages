@@ -10,7 +10,7 @@ Comprehensive improvements to code quality, safety, and maintainability across t
 
 ### 1. Unified Library Foundation
 
-**Created: `/usr/local/lib/kiro-common.sh`**
+**Created: `/usr/local/lib/roman-os-common.sh`**
 - Single comprehensive library with 80+ utility functions
 - Merged from arcolinux-nemesis/common/common.sh + EDU-specific utilities
 - Organized into 14 sections for easy navigation
@@ -26,7 +26,7 @@ Comprehensive improvements to code quality, safety, and maintainability across t
 
 **Removed: `edu-common.sh`** (empty wrapper)
 - Eliminated unnecessary wrapper
-- All scripts now source `kiro-common.sh` directly
+- All scripts now source `roman-os-common.sh` directly
 
 ---
 
@@ -115,7 +115,7 @@ trap 'rm -f "${tmpfile}"' EXIT INT TERM
 
 ### 5. Library Integration
 
-**Scripts Now Using `kiro-common.sh`:**
+**Scripts Now Using `roman-os-common.sh`:**
 - ✅ `edu-fix-pacman-conf` - Uses `check_connectivity()`, `log_*` functions
 - ✅ `get-linux-kiro` - Uses `log_*` functions
 - ✅ `edu-fix-pacman-databases-and-keys` - Uses `check_connectivity()`, `confirm_destructive_operation()`, `log_*` functions
@@ -130,10 +130,10 @@ trap 'rm -f "${tmpfile}"' EXIT INT TERM
 #!/bin/bash
 set -Euo pipefail
 
-if [[ -f /usr/local/lib/kiro-common.sh ]]; then
-    source /usr/local/lib/kiro-common.sh
+if [[ -f /usr/local/lib/roman-os-common.sh ]]; then
+    source /usr/local/lib/roman-os-common.sh
 else
-    echo "ERROR: kiro-common.sh not found" >&2
+    echo "ERROR: roman-os-common.sh not found" >&2
     exit 1
 fi
 ```
@@ -148,7 +148,7 @@ fi
 | Unquoted Variables    | 20+ instances         | Fixed in critical scripts         | Word splitting vulnerabilities → safe |
 | Download Verification | None                  | Full validation                   | Partial/corrupt files → caught        |
 | Destructive Ops       | No confirmation       | `confirm_destructive_operation()` | Accidental data loss → prevented      |
-| Code Reuse            | Duplicated functions  | Single `kiro-common.sh`           | 100 lines duplicated → 0              |
+| Code Reuse            | Duplicated functions  | Single `roman-os-common.sh`           | 100 lines duplicated → 0              |
 | Logging Consistency   | Mixed echo/tput       | Unified `log_*()` functions       | Inconsistent output → professional    |
 | Library Size          | N/A                   | 1000+ lines                       | 80+ functions available               |
 
@@ -184,7 +184,7 @@ fi
 #!/bin/bash
 set -Euo pipefail
 
-source /usr/local/lib/kiro-common.sh
+source /usr/local/lib/roman-os-common.sh
 ```
 
 ### Logging Functions
@@ -245,7 +245,7 @@ To verify improvements:
 
 ```bash
 # Source the library
-source /usr/local/lib/kiro-common.sh
+source /usr/local/lib/roman-os-common.sh
 
 # Test logging
 log_section "Test Section"
@@ -267,7 +267,7 @@ bash -n /usr/local/bin/edu-fix-pacman-conf  # No errors = good
 - Proper quoting prevents word-splitting bugs
 - Library-based approach reduces code duplication
 - Professional, consistent logging output
-- Easy to extend with new helpers in `kiro-common.sh`
+- Easy to extend with new helpers in `roman-os-common.sh`
 
 ---
 

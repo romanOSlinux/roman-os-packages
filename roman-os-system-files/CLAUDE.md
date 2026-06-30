@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 System configuration and utility scripts for Kiro / ArcoLinux-based desktops. It ships:
 - **`usr/local/bin/`** — 40+ standalone utility scripts (pacman helpers, kernel variant installers, system info, DE fetchers)
-- **`usr/local/lib/kiro-common.sh`** — unified shared library sourced by all scripts (80+ functions, 1000+ lines)
+- **`usr/local/lib/roman-os-common.sh`** — unified shared library sourced by all scripts (80+ functions, 1000+ lines)
 - **`etc/`** — drop-in config files for sysctl, udev, systemd, modprobe, X11, pacman hooks
 
 ## Deployment
@@ -17,16 +17,16 @@ After committing changes, build and install the package (e.g. `makepkg -si`). Di
 
 `setup-edu.sh` configures git remotes; `up.sh` commits and pushes.
 
-## Shared library (`kiro-common.sh`)
+## Shared library (`roman-os-common.sh`)
 
 Every script must source this library before doing anything else:
 
 ```bash
-# shellcheck source=/usr/local/lib/kiro-common.sh
-source /usr/local/lib/kiro-common.sh
+# shellcheck source=/usr/local/lib/roman-os-common.sh
+source /usr/local/lib/roman-os-common.sh
 ```
 
-**Documented exception — `usr/local/bin/kiro-skell` and `usr/local/bin/kiro-skell-all`.** This pair of scripts does **not** source the library; each **inlines** the handful of helpers it needs (colors, `log_info`, `log_success`, `show_help`, `show_version`, `execute_or_dryrun`, the ERR trap). `kiro-skell` is the **fast** default (backs up only the `~/.config` entries `/etc/skel` overwrites, scanned dynamically); `kiro-skell-all` is the **full** variant (backs up the whole `~/.config`). Reason for self-containment: `kiro-skell` is the single source of truth for ATT's `skell`, which is fetched and shipped to **non-Kiro** systems (stock Arch, Endeavour, CachyOS, Manjaro) where `/usr/local/lib/kiro-common.sh` does not exist. Sourcing it would hard-fail off-Kiro. Keep both self-contained; do not "fix" them to source the library. All their user-facing text uses `"$(basename "$0")"` so a verbatim copy under another name (e.g. `skell`) prints that name unchanged. If `kiro-common.sh`'s log format changes, update the inline copies here by hand.
+**Documented exception — `usr/local/bin/kiro-skell` and `usr/local/bin/kiro-skell-all`.** This pair of scripts does **not** source the library; each **inlines** the handful of helpers it needs (colors, `log_info`, `log_success`, `show_help`, `show_version`, `execute_or_dryrun`, the ERR trap). `kiro-skell` is the **fast** default (backs up only the `~/.config` entries `/etc/skel` overwrites, scanned dynamically); `kiro-skell-all` is the **full** variant (backs up the whole `~/.config`). Reason for self-containment: `kiro-skell` is the single source of truth for ATT's `skell`, which is fetched and shipped to **non-Kiro** systems (stock Arch, Endeavour, CachyOS, Manjaro) where `/usr/local/lib/roman-os-common.sh` does not exist. Sourcing it would hard-fail off-Kiro. Keep both self-contained; do not "fix" them to source the library. All their user-facing text uses `"$(basename "$0")"` so a verbatim copy under another name (e.g. `skell`) prints that name unchanged. If `roman-os-common.sh`'s log format changes, update the inline copies here by hand.
 
 Key sections and their functions:
 - **Colors** — `$RED`, `$GREEN`, `$YELLOW`, `$BLUE`, `$CYAN`, `$BOLD`, `$RESET` (tput-based, disabled when not a terminal)
@@ -40,10 +40,10 @@ Key sections and their functions:
 ## Script conventions
 
 - First line after shebang: `set -Euo pipefail`
-- Source `kiro-common.sh` before any logic
+- Source `roman-os-common.sh` before any logic
 - Use library logging functions — never raw `echo` for user-facing output
 - Root checks via `require_root_tools` or `[[ $EUID -ne 0 ]]` guard
-- Avoid hard-coding paths that `kiro-common.sh` already provides
+- Avoid hard-coding paths that `roman-os-common.sh` already provides
 
 ## Kernel-agnostic rule
 
@@ -78,7 +78,7 @@ All `etc/` config files were audited and fixed. The set is now safe to deploy on
 
 ## Script improvement status
 
-- Phase 1 (complete): unified library, error handling, variable quoting — all 33 scripts source `kiro-common.sh`
+- Phase 1 (complete): unified library, error handling, variable quoting — all 33 scripts source `roman-os-common.sh`
 - Phase 2 (in progress): `--help`/`--version`/`--dry-run` flags and man pages — pattern established on `kiro-fix-pacman-keys`, `kiro-enable-ssh`, and `kiro-audit`
 - Phases 3–4 (planned): config files, full shellcheck/shfmt pass
 
@@ -112,7 +112,7 @@ pkg=$(pacman -Qqo "$(realpath "${BASH_SOURCE[0]}")" 2>/dev/null) \
 
 ## `log_error` is a trap handler, not a message function
 
-`log_error` in `kiro-common.sh` takes `lineno` and `cmd` params — it is wired to the ERR trap. Calling it with a plain string produces the full banner with the string treated as a line number. For user-facing messages (e.g. root checks), use:
+`log_error` in `roman-os-common.sh` takes `lineno` and `cmd` params — it is wired to the ERR trap. Calling it with a plain string produces the full banner with the string treated as a line number. For user-facing messages (e.g. root checks), use:
 
 ```bash
 echo "${RED}This script must be run as root.${RESET}" >&2

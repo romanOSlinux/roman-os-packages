@@ -18,7 +18,7 @@ set -Euo pipefail
 #   safety net.
 #
 #   Self-contained by design: this script does NOT source
-#   /usr/local/lib/kiro-common.sh. It inlines the handful of helpers it needs
+#   /usr/local/lib/roman-os-common.sh. It inlines the handful of helpers it needs
 #   so it runs unchanged on any distro (the library is Kiro-only). That makes
 #   it safe to vendor into other projects. All user-facing text uses
 #   "$(basename "$0")", so a verbatim copy under a different filename prints
@@ -29,7 +29,7 @@ set -Euo pipefail
 DRY_RUN=false
 NAME="$(basename "$0")"
 
-# ── Inlined helpers (kept in step with /usr/local/lib/kiro-common.sh) ─────────
+# ── Inlined helpers (kept in step with /usr/local/lib/roman-os-common.sh) ─────────
 if command -v tput >/dev/null 2>&1 && [[ -t 1 ]]; then
     RED="$(tput setaf 1)";    GREEN="$(tput setaf 2)"
     YELLOW="$(tput setaf 3)"; BLUE="$(tput setaf 4)"

@@ -17,11 +17,11 @@ set -Euo pipefail
 #
 ##################################################################################################################
 
-# shellcheck source=/usr/local/lib/kiro-common.sh
-if [[ -f /usr/local/lib/kiro-common.sh ]]; then
-    source /usr/local/lib/kiro-common.sh
+# shellcheck source=/usr/local/lib/roman-os-common.sh
+if [[ -f /usr/local/lib/roman-os-common.sh ]]; then
+    source /usr/local/lib/roman-os-common.sh
 else
-    echo "ERROR: kiro-common.sh not found" >&2
+    echo "ERROR: roman-os-common.sh not found" >&2
     exit 1
 fi
 
@@ -119,7 +119,7 @@ check_config_files() {
         /etc/X11/xorg.conf.d/30-touchpad.conf
         /etc/X11/xorg.conf.d/99-killX.conf
         /etc/pacman.d/hooks/bootloader-systemd-boot.hook
-        /usr/local/lib/kiro-common.sh
+        /usr/local/lib/roman-os-common.sh
     )
 
     for f in "${files[@]}"; do

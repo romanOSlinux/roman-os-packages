@@ -19,11 +19,11 @@ set -Euo pipefail
 #
 ##################################################################################################################
 
-# shellcheck source=/usr/local/lib/kiro-common.sh
-if [[ -f /usr/local/lib/kiro-common.sh ]]; then
-    source /usr/local/lib/kiro-common.sh
+# shellcheck source=/usr/local/lib/roman-os-common.sh
+if [[ -f /usr/local/lib/roman-os-common.sh ]]; then
+    source /usr/local/lib/roman-os-common.sh
 else
-    echo "ERROR: kiro-common.sh not found" >&2
+    echo "ERROR: roman-os-common.sh not found" >&2
     exit 1
 fi
 

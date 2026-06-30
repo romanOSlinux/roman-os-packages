@@ -97,8 +97,8 @@ trap 'on_error "$LINENO" "$BASH_COMMAND"' ERR
 #####################################################################
 # Privilege — re-exec as root (polkit popup in a GUI, sudo over SSH/tty)
 #####################################################################
-# kiro-audit is self-contained and does NOT source kiro-common.sh, so it
-# carries its own copy of this helper. Keep it in sync with kiro-common.sh.
+# kiro-audit is self-contained and does NOT source roman-os-common.sh, so it
+# carries its own copy of this helper. Keep it in sync with roman-os-common.sh.
 ensure_root() {
     [[ $EUID -eq 0 ]] && return 0
     trap - ERR

@@ -118,7 +118,7 @@
 ### Technical Details
 - `getent passwd "${PKEXEC_UID}" | cut -d: -f1` maps the uid back to a name; empty `PKEXEC_UID` (sudo /
   real-root) falls through to the original `${SUDO_USER:-$USER}`.
-- Affects only `kiro-system-files` (the sole package shipping `kiro-common.sh`); the change is a strict
+- Affects only `kiro-system-files` (the sole package shipping `roman-os-common.sh`); the change is a strict
   correction — no consumer wants `TARGET_USER=root` under pkexec.
 
 ### kiro-common — restore /usr/local/bin on the pkexec PATH
@@ -161,7 +161,7 @@
   no-match case; on the dev box (`UEFI OS` fallback) it now correctly reports `systemd-boot`.
 
 ### Files Modified
-- `usr/local/lib/kiro-common.sh` — `TARGET_USER` honours `PKEXEC_UID`; `ensure_root` passes a PATH with `/usr/local/bin` through pkexec
+- `usr/local/lib/roman-os-common.sh` — `TARGET_USER` honours `PKEXEC_UID`; `ensure_root` passes a PATH with `/usr/local/bin` through pkexec
 - `usr/local/bin/kiro-report` — Calamares warnings exclude `(Qt):`; IPv4/IPv6 redaction tightened
 - `usr/local/bin/kiro-diag` — bootloader detection rewritten to use ESP evidence, not efibootmgr labels
 
@@ -377,7 +377,7 @@
 **Technical Details**
 - Cores read via `nproc`; target = `nproc - RESERVE` (RESERVE=1/2), floored to `-j1` with a warn on low-core boxes.
 - The sed is broadened from the original's narrow `#MAKEFLAGS="-j2"` match to `s/^#?MAKEFLAGS=.*/MAKEFLAGS="-jN"/` (with `-E`), so it works whether the line is the commented default or already set by a prior `kiro-set-cores` run, and is idempotent. Verified the `#-- Make Flags:` documentation comment is left untouched (only the `#MAKEFLAGS=` line carries `MAKEFLAGS=`).
-- Both scripts source `kiro-common.sh` like the rest of the suite; verified `bash -n`, `--help`, and `--dry-run` on the dev box (16 cores → `-j15` / `-j14`). No PKGBUILD change — the package `cp -a`'s `usr/` wholesale.
+- Both scripts source `roman-os-common.sh` like the rest of the suite; verified `bash -n`, `--help`, and `--dry-run` on the dev box (16 cores → `-j15` / `-j14`). No PKGBUILD change — the package `cp -a`'s `usr/` wholesale.
 
 ### New tool: `kiro-calamares-log` — summarise the Calamares installer log
 
@@ -425,8 +425,8 @@
 
 **Technical Details**
 - New `kiro-skell` scans `/etc/skel/.config/*` at runtime and backs up each matching `~/.config/<name>` into `~/.config-backup-<stamp>/.config/`. Dynamic scan (not a hardcoded list) so it auto-adapts per ISO and never drifts stale.
-- Both scripts stay self-contained (inline helpers, no `kiro-common.sh`) so ATT's `skell` keeps fetching `kiro-skell` verbatim — `skell` now tracks the fast variant on the next `fetch-configs.sh` run.
-- Man pages: new `kiro-skell-all.8`; `kiro-skell.8` rewritten for the scoped behavior; both cross-reference via `SEE ALSO`. Fixed the stale `FILES` line that listed `kiro-common.sh` as a dependency.
+- Both scripts stay self-contained (inline helpers, no `roman-os-common.sh`) so ATT's `skell` keeps fetching `kiro-skell` verbatim — `skell` now tracks the fast variant on the next `fetch-configs.sh` run.
+- Man pages: new `kiro-skell-all.8`; `kiro-skell.8` rewritten for the scoped behavior; both cross-reference via `SEE ALSO`. Fixed the stale `FILES` line that listed `roman-os-common.sh` as a dependency.
 - No PKGBUILD change needed — the package `cp -a`'s `usr/` wholesale, so the renamed + new files ship automatically.
 - Verified: `bash -n` clean on both; `--dry-run` on each prints the expected backup scope.
 
@@ -438,11 +438,11 @@
 ### `kiro-skell` made self-contained — single source of truth for ATT's `skell`
 
 **What Changed**
-- `kiro-skell` no longer sources `/usr/local/lib/kiro-common.sh`; it inlines the helpers it uses (colors, `log_info`, `log_success`, `show_help`, `show_version`, `execute_or_dryrun`, ERR trap). It now runs unchanged on any distro. This makes it the **single source of truth** for ATT's `skell` (cross-distro, where `kiro-common.sh` does not exist) — ATT fetches this file verbatim and ships it as `usr/bin/skell`. The copy direction is one-way: ATT pulls from here; this repo stays unaware of ATT.
+- `kiro-skell` no longer sources `/usr/local/lib/roman-os-common.sh`; it inlines the helpers it uses (colors, `log_info`, `log_success`, `show_help`, `show_version`, `execute_or_dryrun`, ERR trap). It now runs unchanged on any distro. This makes it the **single source of truth** for ATT's `skell` (cross-distro, where `roman-os-common.sh` does not exist) — ATT fetches this file verbatim and ships it as `usr/bin/skell`. The copy direction is one-way: ATT pulls from here; this repo stays unaware of ATT.
 - The intro block is now colored (`log_section` + body) instead of a plain `echo` banner, and the whole script names itself via `"$(basename "$0")"`, so the same bytes print `kiro-skell` here and `skell` when ATT ships it — no rewriting on copy.
 
 **Technical Details**
-- Documented exception added to `CLAUDE.md` (Shared library section): `kiro-skell` is the one script that does not source `kiro-common.sh`; keep the inline helpers in step with the library by hand if its log format changes.
+- Documented exception added to `CLAUDE.md` (Shared library section): `kiro-skell` is the one script that does not source `roman-os-common.sh`; keep the inline helpers in step with the library by hand if its log format changes.
 - Verified: `bash -n` clean; `--help`, `--version`, `--dry-run` all work standalone (no library present); run under the name `skell` it prints `skell`.
 
 **Files Modified**
@@ -472,9 +472,9 @@
 - New `kiro-probe-report` command turns any saved probe (an `hw.info.txz` archive or `hw.info` directory) into a single self-contained, colour-coded HTML page: system summary cards, a device-status overview (works / detected / failed), a grouped device table, and collapsible raw-log sections (inxi, lscpu, dmidecode, lsblk, smartctl, sensors, glxinfo, lspci, lsusb, nmcli, systemd-analyze, dmesg). Runs without root and contacts no server.
 
 **Technical Details**
-- New `usr/local/lib/kiro-probe-report.py` — the HTML generator (the repo's first Python file). Parses the probe's `host` (key:value) and `devices` (`;`-delimited, with a per-device status field) plus selected `logs/`, and emits one dependency-free HTML file with inline CSS. Status colour-codes green/blue/red. Kept as a silent helper invoked by a bash wrapper, so the user-facing layer still sources `kiro-common.sh` per repo convention. `ruff` clean.
-- New `usr/local/bin/kiro-probe-report` — bash wrapper (sources `kiro-common.sh`, `--help`/`--version`/`--dry-run`). Resolves a `.txz` (extracted to a temp dir cleaned by an EXIT trap) or a directory to the dir holding `host`, then calls the generator. `chown`s the output back to `$SUDO_USER` when run under sudo.
-- Two bugs found and fixed in the wrapper during testing: (1) `resolve_info_dir` originally returned its path via command substitution, so the `WORKDIR` it set lived only in the subshell — the temp dir leaked and parent `WORKDIR` stayed empty. Rewritten to set a global `INFO_DIR` (no subshell). (2) The `cleanup` EXIT-trap function ended on a short-circuited `[[ ... ]] && rm`, returning non-zero when there was nothing to clean; under `set -Euo pipefail` that tripped `kiro-common.sh`'s ERR trap and printed a spurious "ERROR DETECTED" banner (with a misleading stale `BASH_COMMAND`). Added an explicit `return 0`.
+- New `usr/local/lib/kiro-probe-report.py` — the HTML generator (the repo's first Python file). Parses the probe's `host` (key:value) and `devices` (`;`-delimited, with a per-device status field) plus selected `logs/`, and emits one dependency-free HTML file with inline CSS. Status colour-codes green/blue/red. Kept as a silent helper invoked by a bash wrapper, so the user-facing layer still sources `roman-os-common.sh` per repo convention. `ruff` clean.
+- New `usr/local/bin/kiro-probe-report` — bash wrapper (sources `roman-os-common.sh`, `--help`/`--version`/`--dry-run`). Resolves a `.txz` (extracted to a temp dir cleaned by an EXIT trap) or a directory to the dir holding `host`, then calls the generator. `chown`s the output back to `$SUDO_USER` when run under sudo.
+- Two bugs found and fixed in the wrapper during testing: (1) `resolve_info_dir` originally returned its path via command substitution, so the `WORKDIR` it set lived only in the subshell — the temp dir leaked and parent `WORKDIR` stayed empty. Rewritten to set a global `INFO_DIR` (no subshell). (2) The `cleanup` EXIT-trap function ended on a short-circuited `[[ ... ]] && rm`, returning non-zero when there was nothing to clean; under `set -Euo pipefail` that tripped `roman-os-common.sh`'s ERR trap and printed a spurious "ERROR DETECTED" banner (with a misleading stale `BASH_COMMAND`). Added an explicit `return 0`.
 - The HTML carries a prominent local-only privacy banner: the raw-log sections embed hardware serial numbers (dmidecode/smartctl/lsblk), so the file is marked do-not-publish.
 - New man page `kiro-probe-report.8`; `kiro-probe.8` updated for `--save`. Both lint clean (`groff -man -z`). Verified end-to-end against a real saved probe: both `.txz` and directory inputs render identically (132 KB), bad input exits 1, no temp-dir leak, no spurious ERR banner.
 
@@ -597,7 +597,7 @@
 ### `show_version` — query pacman at runtime instead of hardcoding
 
 **What Changed**
-- `show_version()` in `kiro-common.sh` was printing a hardcoded `version 1.0.0` + frozen `Created: 2026-04-20` line for 17 of the 18 `usr/local/bin/` scripts — directly violating the repo's own "Never hardcode a version string. Query the owning package." rule in CLAUDE.md. Only `kiro-audit` did it correctly (inline). The helper now resolves the caller's path and queries `pacman -Qqo` → `pacman -Q`, so `--version` matches what pacman knows; falls back to `<script> (not installed via pacman)` when run from a source tree. One central fix lifts all 17 scripts at once.
+- `show_version()` in `roman-os-common.sh` was printing a hardcoded `version 1.0.0` + frozen `Created: 2026-04-20` line for 17 of the 18 `usr/local/bin/` scripts — directly violating the repo's own "Never hardcode a version string. Query the owning package." rule in CLAUDE.md. Only `kiro-audit` did it correctly (inline). The helper now resolves the caller's path and queries `pacman -Qqo` → `pacman -Q`, so `--version` matches what pacman knows; falls back to `<script> (not installed via pacman)` when run from a source tree. One central fix lifts all 17 scripts at once.
 
 **Technical Details**
 - Second parameter to `show_version` is now the script path (defaults to `$0`), so call sites that pass `"$0"` or `"$(basename "$0")"` continue to work; passing `${BASH_SOURCE[0]}` from a caller gives the most accurate resolution under symlinks.
@@ -605,7 +605,7 @@
 - `kiro-audit`'s inline `-v|--version` block migrated to call `show_version "$(basename "$0")" "${BASH_SOURCE[0]}"` instead of duplicating the pacman-query pattern. Single source of truth across all 18 scripts now.
 
 **Files Modified**
-- `usr/local/lib/kiro-common.sh`
+- `usr/local/lib/roman-os-common.sh`
 - `usr/local/bin/kiro-audit`
 
 ---
@@ -718,13 +718,13 @@ Companion changes outside this repo:
 **What Changed**
 - Stopped `62-network-optimization.rules` from emitting two boot-time `ethtool` errors on machines with a consumer Intel NIC (I217/I218/I219, e1000e driver). The rule applied server-NIC tuning knobs to all e1000e devices, which they reject.
 - Fixed a false-positive `[FAIL]` in `kiro-verify`: its config-presence list still expected `10-kiro-session.conf` at the old `multi-user.target.wants/systemd-logind.service.d/` path. The drop-in was moved to the canonical `systemd-logind.service.d/` path on 2026.05.22, but the verifier's expected-path list was never updated to match.
-- Added graphical privilege escalation: a new `ensure_root()` helper in `kiro-common.sh`, wired into the 5 root-requiring scripts (`kiro-diag`, `kiro-audit`, `kiro-verify`, `kiro-enable-ssh`, `kiro-pci-latency`). Forgetting `sudo` now pops up a polkit password dialog in a graphical session (or falls back to a terminal `sudo` prompt over SSH/tty) instead of erroring out.
+- Added graphical privilege escalation: a new `ensure_root()` helper in `roman-os-common.sh`, wired into the 5 root-requiring scripts (`kiro-diag`, `kiro-audit`, `kiro-verify`, `kiro-enable-ssh`, `kiro-pci-latency`). Forgetting `sudo` now pops up a polkit password dialog in a graphical session (or falls back to a terminal `sudo` prompt over SSH/tty) instead of erroring out.
 - Fixed `kiro-diag` hanging indefinitely at the Bluetooth section when the bluetooth service is inactive.
 - Expanded `kiro-audit` to match current config drift: the udev check now validates all 10 shipped rule files (was 2), plus new checks for systemd drop-ins, Intel/Realtek ethernet modprobe configs, and the THP tmpfiles drop-in; help/header text updated for auto-elevation.
 - Fixed the ripple from the `pci-latency`→`kiro-pci-latency`, `skel`→`kiro-skel`, `get-nemesis`→`kiro-get-nemesis` script renames: renamed the systemd unit to `kiro-pci-latency.service` (ExecStart, enable symlink, and `kiro-verify`/man-page references all updated), renamed the 3 orphaned man pages, and corrected the README tool table.
 - In-depth review of `kiro-verify`: fixed an IO-scheduler false-`FAIL` (it expected `mmcblk` → `bfq`, but `60-io-scheduler.rules` sets non-rotational `mmcblk` → `mq-deadline`), and added the missing `khugepaged/scan_sleep_millisecs=10` THP check. Its 38-entry config-presence list was verified complete and accurate against the shipped tree (no changes).
 - In-depth review of `kiro-lint`, two fixes to the udev ATTR-target check: (1) block-device ATTR writes (IO schedulers, read-ahead, fifo_batch — the most common kind) were **never verified**, always `[SKIP]`, because the device-type classifier glob-matched the `KERNEL==` value against case patterns but the value literally contains glob metacharacters (`sd[a-z]*`) and never matched its own pattern — replaced with substring family detection; (2) rules that match by `SUBSYSTEM==` rather than `KERNEL==` (the `power/control` writes in 61-audio-power and 64-gpu) were also skipped — added a subsystem resolver that searches `/sys/bus/<sub>/devices` and `/sys/class/<sub>`. Together these took the verified-write count on a SATA box from 5 → 19 (remaining SKIPs are genuine: no nvme/vd/wifi/backlight present, unloaded modules).
-- Reviewed `kiro-probe` (a thin `hw-probe` upload wrapper — correctly uses per-command `sudo`, no changes beyond the below) and from it caught a systemic bug: `log_error` is the `kiro-common.sh` ERR-trap handler (`log_error <lineno> <cmd>`), but 13 scripts called it with a plain message string, rendering a misleading "⚠️ ERROR DETECTED / Line: <message> / Waiting 10 seconds…" banner (no actual wait) on their error paths. Converted all 15 sites — 12 identical `Unknown option: $arg` arg-parse errors plus 3 bespoke messages (rate-mirrors missing, no-internet, setpci-not-found) — to the `echo "${RED}…${RESET}" >&2` convention already used by kiro-diag/kiro-lint. `kiro-audit` is excluded: it's standalone and its own `log_error` is a message function, so its call is correct.
+- Reviewed `kiro-probe` (a thin `hw-probe` upload wrapper — correctly uses per-command `sudo`, no changes beyond the below) and from it caught a systemic bug: `log_error` is the `roman-os-common.sh` ERR-trap handler (`log_error <lineno> <cmd>`), but 13 scripts called it with a plain message string, rendering a misleading "⚠️ ERROR DETECTED / Line: <message> / Waiting 10 seconds…" banner (no actual wait) on their error paths. Converted all 15 sites — 12 identical `Unknown option: $arg` arg-parse errors plus 3 bespoke messages (rate-mirrors missing, no-internet, setpci-not-found) — to the `echo "${RED}…${RESET}" >&2` convention already used by kiro-diag/kiro-lint. `kiro-audit` is excluded: it's standalone and its own `log_error` is a message function, so its call is correct.
 - Eliminated the *remaining* boot-time `ethtool` error on the `62-network-optimization.rules` e1000e path. Even after the knob-split above (correct single `rx-usecs 0`), the command still failed exit 1 every boot on picard — a separate cause: a udev net-rename race, not an unsupported knob. Fixed by matching the rename `move` event and guarding the call so it can no longer log a failure. Found during a syscheck on picard (booted on the prior package; the split fix removed the EINVAL knobs but not this race).
 
 **Technical Details**
@@ -732,7 +732,7 @@ Companion changes outside this repo:
 - *(ethtool)* Split `e1000e` onto its own coalescing line using only the supported `rx-usecs 0`; left the full four-knob line for `igb|ixgbe|i40e`. Dropped `e1000e` from the GSO line entirely. Networking was never affected — this was cosmetic boot-log noise.
 - *(kiro-verify)* The expected path was a leftover from the pre-2026.05.22 layout and even contained an impossible drop-in location (`*.target.wants/` holds symlinks, not service override dirs). The file ships and applies correctly on picard (`systemctl show systemd-logind` confirms `TimeoutStopUSec=10s`, `Restart=on-failure`), so this was purely a stale check, not a missing config. Corrected the list entry to `/etc/systemd/system/systemd-logind.service.d/10-kiro-session.conf`.
 - Both found via `dmesg`/`journalctl` and `kiro-verify` on picard (bare-metal Kiro v26.05.24), traced to the package with `pacman -Qo`. Shared package, so the fixes improve both the production and `-next` ISOs.
-- *(ensure_root)* Re-execs via `exec pkexec env TERM="$TERM" "$self" "$@"` when a display is present and `pkexec` exists, else `exec sudo`. `TERM` is passed through `env` because `pkexec` scrubs the environment, which would otherwise strip colored output. Uses `${BASH_SOURCE[-1]}` so the original script path resolves whether invoked by full path, bare name via `PATH`, or from inside a function. `kiro-audit` is self-contained (does not source `kiro-common.sh`), so it carries its own copy of the helper — must be kept in sync. `--help`/`--version` are handled before `ensure_root`, so they never trigger a password prompt.
+- *(ensure_root)* Re-execs via `exec pkexec env TERM="$TERM" "$self" "$@"` when a display is present and `pkexec` exists, else `exec sudo`. `TERM` is passed through `env` because `pkexec` scrubs the environment, which would otherwise strip colored output. Uses `${BASH_SOURCE[-1]}` so the original script path resolves whether invoked by full path, bare name via `PATH`, or from inside a function. `kiro-audit` is self-contained (does not source `roman-os-common.sh`), so it carries its own copy of the helper — must be kept in sync. `--help`/`--version` are handled before `ensure_root`, so they never trigger a password prompt.
 - *(kiro-diag)* `bluetoothctl show` blocks on D-Bus when `bluetoothd` is down; it is now skipped entirely when the service is inactive and wrapped in `timeout 3` when active.
 - *(kiro-pci-latency.service)* Renamed the unit from `pci-latency.service` to `kiro-pci-latency.service` and repointed `ExecStart` to `/usr/local/bin/kiro-pci-latency` (the old path was deleted by the script rename and would fail `203/EXEC` at boot). Recreated the `multi-user.target.wants/` enable symlink with the corrected `../kiro-pci-latency.service` target, and updated the unit-name references in `kiro-verify` (config list + oneshot result check) and the man pages.
 - *(man pages)* Renamed with `git mv` (history preserved); content rewritten with `perl` using a guard that preserves the unchanged `/etc/skel` system path. Service-unit path references were updated to `kiro-pci-latency.service` to match the rename.
@@ -743,7 +743,7 @@ Companion changes outside this repo:
 **Files Modified**
 - [etc/udev/rules.d/62-network-optimization.rules](etc/udev/rules.d/62-network-optimization.rules)
 - [usr/local/bin/kiro-verify](usr/local/bin/kiro-verify)
-- [usr/local/lib/kiro-common.sh](usr/local/lib/kiro-common.sh)
+- [usr/local/lib/roman-os-common.sh](usr/local/lib/roman-os-common.sh)
 - [usr/local/bin/kiro-diag](usr/local/bin/kiro-diag), [usr/local/bin/kiro-audit](usr/local/bin/kiro-audit), [usr/local/bin/kiro-enable-ssh](usr/local/bin/kiro-enable-ssh), [usr/local/bin/kiro-pci-latency](usr/local/bin/kiro-pci-latency), [usr/local/bin/kiro-lint](usr/local/bin/kiro-lint)
 - `log_error` sweep: [kiro-probe](usr/local/bin/kiro-probe), [kiro-get-mirrors](usr/local/bin/kiro-get-mirrors), [kiro-fix-mirrors](usr/local/bin/kiro-fix-mirrors), [kiro-which-vga](usr/local/bin/kiro-which-vga), [kiro-fix-pacman-keys](usr/local/bin/kiro-fix-pacman-keys), [kiro-fix-gpg-conf](usr/local/bin/kiro-fix-gpg-conf), [kiro-skel](usr/local/bin/kiro-skel), [kiro-install-tools](usr/local/bin/kiro-install-tools), [kiro-fix-pacman-conf](usr/local/bin/kiro-fix-pacman-conf), [kiro-iso-version](usr/local/bin/kiro-iso-version), [kiro-get-nemesis](usr/local/bin/kiro-get-nemesis), [kiro-set-cores](usr/local/bin/kiro-set-cores) (kiro-enable-ssh, kiro-pci-latency already listed above)
 - [etc/systemd/system/kiro-pci-latency.service](etc/systemd/system/kiro-pci-latency.service) (renamed from `pci-latency.service`; `multi-user.target.wants/` enable symlink recreated)
@@ -783,7 +783,7 @@ Added the mandatory `Purpose:` / `Why:` header block to 18 scripts in `usr/local
 
 **Technical Details**
 - Inserted a `# Purpose:` prose block (what the script does) followed by a `# Why:` line (motivation) into each script's existing `#####` banner header, between the `DO NOT JUST RUN THIS` warning and the closing banner line.
-- No functional code changes — headers only. Existing `set -Euo pipefail`, `SCRIPT_DIR`, sourcing of `kiro-common.sh`, and arg parsing all left untouched.
+- No functional code changes — headers only. Existing `set -Euo pipefail`, `SCRIPT_DIR`, sourcing of `roman-os-common.sh`, and arg parsing all left untouched.
 - `kiro-audit` header refreshed: dropped the old short "verify the install is correct" line and replaced with the full Purpose/Why pair that lists what the audit actually checks (kernel, microcode, mkinitcpio, audio, Calamares cleanup, kiro_final, repos, DEs, SDDM, groups, services, permissions, bootloader, packages).
 - Brings these scripts into compliance so anyone opening the file can tell what it does without reading the body — matches the standard set by Kiro-HQ's `up.sh` / `setup.sh` / `cleanup.sh`.
 
@@ -865,8 +865,8 @@ Added `--fix` mode to `kiro-audit` that auto-remediates known fixable failures. 
 Added `kiro-enable-ssh` — a one-step script that installs `openssh` and immediately enables/starts `sshd`. Fixed incorrect use of `log_error` for a user-facing root-check message.
 
 **Technical Details**
-- Script follows the Phase 2 pattern: sources `kiro-common.sh`, supports `--help`/`--version`/`--dry-run`, requires root via `[[ $EUID -ne 0 ]]` guard
-- `log_error` in `kiro-common.sh` is the ERR trap handler — it takes `lineno`/`cmd` params, not a message string. Calling it with a plain string produces the full `⚠️ ERROR DETECTED` banner with the message treated as a line number. Root-check failures (and any user-facing error before the trap can fire) must use `echo "${RED}...${RESET}" >&2` instead
+- Script follows the Phase 2 pattern: sources `roman-os-common.sh`, supports `--help`/`--version`/`--dry-run`, requires root via `[[ $EUID -ne 0 ]]` guard
+- `log_error` in `roman-os-common.sh` is the ERR trap handler — it takes `lineno`/`cmd` params, not a message string. Calling it with a plain string produces the full `⚠️ ERROR DETECTED` banner with the message treated as a line number. Root-check failures (and any user-facing error before the trap can fire) must use `echo "${RED}...${RESET}" >&2` instead
 - Man pages belong in `usr/share/man/man8/` (maps to `/usr/share/man/man8/` on deploy) — the path is correct. `mandb` runs on a daily systemd timer (`man-db.timer`) with up to 12h random delay, not at boot. Run `sudo mandb` manually after deploying new pages to get immediate tab completion
 
 **Files Modified**
@@ -927,7 +927,7 @@ Complete audit and fix of all `etc/` configuration files — sysctl, udev rules,
 ## 2026.05.18 (session 2)
 
 **What Changed**
-All 33 scripts in `usr/local/bin/` that were not sourcing the shared library have been updated. Every script in the project now sources `/usr/local/lib/kiro-common.sh` for uniform logging, colors, and error handling.
+All 33 scripts in `usr/local/bin/` that were not sourcing the shared library have been updated. Every script in the project now sources `/usr/local/lib/roman-os-common.sh` for uniform logging, colors, and error handling.
 
 **Technical Details**
 Scripts were processed in four tiers:
@@ -1012,8 +1012,8 @@ Documents the shared library pattern, script conventions, config file map, and c
 Phase 1 code quality overhaul: created unified shared library, enabled strict error handling, fixed variable quoting across critical scripts, and standardized logging.
 
 **Technical Details**
-- Created `usr/local/lib/kiro-common.sh` (1000+ lines, 80+ functions) consolidating `arcolinux-nemesis/common/common.sh` and EDU-specific utilities into 14 sections
-- Removed empty `edu-common.sh` wrapper; all scripts now source `kiro-common.sh` directly
+- Created `usr/local/lib/roman-os-common.sh` (1000+ lines, 80+ functions) consolidating `arcolinux-nemesis/common/common.sh` and EDU-specific utilities into 14 sections
+- Removed empty `edu-common.sh` wrapper; all scripts now source `roman-os-common.sh` directly
 - Enabled `set -Euo pipefail` in all main scripts (previously commented out or absent)
 - Fixed 20+ unquoted variable expansions in critical scripts (`edu-fix-pacman-conf`, `get-linux-kiro`, `setup-edu.sh`, `edu-fix-pacman-databases-and-keys`)
 - Replaced bare `echo` calls with `log_*` functions throughout
@@ -1022,7 +1022,7 @@ Phase 1 code quality overhaul: created unified shared library, enabled strict er
 - Replaced hardcoded connectivity checks with `check_connectivity()` library call
 
 **Files Modified**
-- `usr/local/lib/kiro-common.sh` (new)
+- `usr/local/lib/roman-os-common.sh` (new)
 - `usr/local/bin/edu-fix-pacman-conf`
 - `usr/local/bin/edu-fix-pacman-databases-and-keys`
 - `usr/local/bin/get-linux-kiro`

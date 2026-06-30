@@ -1336,7 +1336,7 @@ A hardcoded `echo "myscript version 1.2.3"` goes stale the moment the package is
 
 ## 2026-05-19 (edu-system-files session)
 
-**Tip: In kiro-common.sh, `log_error` is the ERR trap handler — never pass it a plain message string**
+**Tip: In roman-os-common.sh, `log_error` is the ERR trap handler — never pass it a plain message string**
 `log_error lineno cmd` is wired to `trap 'on_error "$LINENO" "$BASH_COMMAND"' ERR`. Calling it as `log_error "must be root"` treats the string as the line number and wraps it in the full `⚠️ ERROR DETECTED` banner — confusing to users and semantically wrong. For any user-facing error message (root checks, bad arguments, missing dependencies), use `echo "${RED}message${RESET}" >&2; exit 1` instead. `log_error` is only for the trap.
 
 **Tip: `mandb` runs on a daily systemd timer, not at boot — run it manually after deploying new man pages**

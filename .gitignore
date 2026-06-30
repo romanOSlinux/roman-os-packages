@@ -1,0 +1,12 @@
+# Arch Linux makepkg build directories
+pkg/
+src/
+
+# Built packages
+*.pkg.tar.zst
+*.pkg.tar.xz
+*.pkg.tar.gz
+
+# Other
+*~
+.*.swp

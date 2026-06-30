@@ -103,14 +103,14 @@ configure_git() {
         git -C "${SCRIPT_DIR}" config --local user.email "erik.dubois@gmail.com"
         git -C "${SCRIPT_DIR}" remote set-url origin "git@github.com:erikdubois/${project}"
         log_success "Git configured — remote set to git@github.com:erikdubois/${project}"
-    elif [[ "${SCRIPT_DIR}" == *"/KIRO"* ]]; then
+    elif [[ "${SCRIPT_DIR}" == *"/KIRO"* || "${SCRIPT_DIR}" == *"/roman-os"* ]]; then
         log_info "https://github.com/roman-osdubes/${project}"
         git -C "${SCRIPT_DIR}" config --local user.name "roman-os Dubes"
         git -C "${SCRIPT_DIR}" config --local user.email "roman-osdubes@gmail.com"
         git -C "${SCRIPT_DIR}" remote set-url origin "git@github.com-roman-os:roman-osdubes/${project}"
         log_success "Git configured — remote set to git@github.com-roman-os:roman-osdubes/${project}"
     else
-        log_error "Cannot determine identity — path contains neither EDU nor KIRO: ${SCRIPT_DIR}"
+        log_error "Cannot determine identity — path contains neither EDU, KIRO nor roman-os: ${SCRIPT_DIR}"
         exit 1
     fi
 }

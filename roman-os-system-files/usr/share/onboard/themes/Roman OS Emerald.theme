@@ -1,11 +1,11 @@
 <?xml version="1.0" ?>
 
-<!-- Kiro Emerald — onboard theme. Part of the Kiro accessibility theme set.
-     Green half of the Kiro brand: deep green-black field, emerald keys,
+<!-- Roman OS Emerald — onboard theme. Part of the Roman OS accessibility theme set.
+     Green half of the Roman OS brand: deep green-black field, emerald keys,
      white labels. Soft, rounded, calm. -->
 
-<theme format="1.3" name="Kiro Emerald">
-  <color_scheme>Kiro Emerald</color_scheme>
+<theme format="1.3" name="Roman OS Emerald">
+  <color_scheme>Roman OS Emerald</color_scheme>
   <background_gradient>2.0</background_gradient>
   <key_style>gradient</key_style>
   <roundrect_radius>22.0</roundrect_radius>

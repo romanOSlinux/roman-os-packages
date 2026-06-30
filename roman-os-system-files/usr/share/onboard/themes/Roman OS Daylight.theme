@@ -1,11 +1,11 @@
 <?xml version="1.0" ?>
 
-<!-- Kiro Daylight — onboard theme. Part of the Kiro accessibility theme set.
+<!-- Roman OS Daylight — onboard theme. Part of the Roman OS accessibility theme set.
      Light, high-readability keyboard: near-black labels on white keys, for
      bright environments and users who prefer light-on-dark contrast. -->
 
-<theme format="1.3" name="Kiro Daylight">
-  <color_scheme>Kiro Daylight</color_scheme>
+<theme format="1.3" name="Roman OS Daylight">
+  <color_scheme>Roman OS Daylight</color_scheme>
   <background_gradient>0.0</background_gradient>
   <key_style>gradient</key_style>
   <roundrect_radius>16.0</roundrect_radius>

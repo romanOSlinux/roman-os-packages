@@ -1,7 +1,7 @@
 # Maintainer: Roman <romanOSlinux>
 pkgname=roman-os-xfce
 pkgver=1.0
-pkgrel=2
+pkgrel=99
 pkgdesc="Configuración y personalización del escritorio XFCE para roman-os (portado desde Kiro)"
 arch=('any')
 url="https://github.com/romanOSlinux/roman-os-packages"

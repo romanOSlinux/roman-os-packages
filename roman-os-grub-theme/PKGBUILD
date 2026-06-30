@@ -1,7 +1,7 @@
 # Maintainer: Roman <romanOSlinux>
 pkgname=roman-os-grub-theme
 pkgver=1.0
-pkgrel=1
+pkgrel=99
 pkgdesc="Tema GRUB minimalista por defecto para roman-os"
 arch=('any')
 url="https://github.com/romanOSlinux/roman-os-packages"

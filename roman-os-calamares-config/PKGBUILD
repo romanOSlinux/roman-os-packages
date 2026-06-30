@@ -1,7 +1,7 @@
 # Maintainer: Roman <romanOSlinux>
 pkgname=roman-os-calamares-config
 pkgver=1.0
-pkgrel=1
+pkgrel=99
 pkgdesc="Configuración y branding para el instalador Calamares en roman-os"
 arch=('any')
 url="https://github.com/romanOSlinux/roman-os-packages"

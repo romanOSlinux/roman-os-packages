@@ -1,0 +1,18 @@
+# roman-os-plymouth.install
+# Scriptlet de pacman para establecer el tema roman-os como predeterminado.
+# Esto evita conflicto de archivos con el paquete 'plymouth' upstream,
+# ya que plymouthd.conf no se instala como archivo rastreado del paquete.
+
+post_install() {
+    # Establecer roman-os como tema Plymouth por defecto
+    mkdir -p /etc/plymouth
+    cat > /etc/plymouth/plymouthd.conf << 'EOF'
+[Daemon]
+Theme=roman-os
+ShowDelay=0
+EOF
+}
+
+post_upgrade() {
+    post_install
+}

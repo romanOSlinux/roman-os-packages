@@ -23,6 +23,18 @@ jobs:
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
           chown -R builder:builder .
 
+      - name: Import GPG Key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ]; then
+            echo "Importando clave GPG para firmar paquetes..."
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          else
+            echo "ERROR: GPG_PRIVATE_KEY no está configurado en los Secretos del Repositorio."
+            exit 1
+          fi
+
       - name: Build Packages
         run: |
           mkdir -p x86_64
@@ -40,20 +52,39 @@ jobs:
             fi
           done
 
-      - name: Generate Repository Database
+      - name: Sign Packages and Generate Database
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           mkdir -p deploy/x86_64
           if ls x86_64/*.pkg.tar.zst 1> /dev/null 2>&1; then
             mv x86_64/*.pkg.tar.zst deploy/x86_64/
             cd deploy/x86_64
-            repo-add roman-os-packages.db.tar.gz *.pkg.tar.zst
+            
+            # Firmar individualmente cada paquete
+            echo "Firmando paquetes compilar..."
+            for pkg in *.pkg.tar.zst; do
+              if [ -n "$GPG_PASSPHRASE" ]; then
+                echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --detach-sign "$pkg"
+              else
+                gpg --batch --yes --detach-sign "$pkg"
+              fi
+            done
+            
+            # Generar la base de datos firmada del repositorio
+            echo "Generando y firmando base de datos del repositorio..."
+            if [ -n "$GPG_PASSPHRASE" ]; then
+              repo-add --sign --key admin@romanos.org roman-os-packages.db.tar.gz *.pkg.tar.zst
+            else
+              repo-add --sign roman-os-packages.db.tar.gz *.pkg.tar.zst
+            fi
           else
             echo "No packages built!"
             exit 1
           fi
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./deploy

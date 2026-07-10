@@ -1,0 +1,22 @@
+# Maintainer: Roman <romanOSlinux>
+pkgname=roman-os-keyring
+pkgver=2026.07.10
+pkgrel=1
+pkgdesc="Llavero GPG oficial para el repositorio roman-os-packages"
+arch=('any')
+url="https://github.com/romanOSlinux/roman-os-packages"
+license=('GPL')
+install=roman-os-keyring.install
+source=('roman-os.pub')
+sha256sums=('SKIP')
+
+package() {
+    # Directorio estándar para llaveros de pacman
+    install -dm755 "$pkgdir/usr/share/pacman/keyrings"
+    
+    # Copiar la llave pública (.pub)
+    install -m644 "$srcdir/roman-os.pub" "$pkgdir/usr/share/pacman/keyrings/roman-os.gpg"
+    
+    # Crear archivo .trusted que le dice a pacman que confíe plenamente en esta firma
+    echo "admin@romanos.org:trust" > "$pkgdir/usr/share/pacman/keyrings/roman-os.trusted"
+}

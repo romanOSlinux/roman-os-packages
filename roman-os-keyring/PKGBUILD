@@ -18,5 +18,5 @@ package() {
     install -m644 "$srcdir/roman-os.pub" "$pkgdir/usr/share/pacman/keyrings/roman-os.gpg"
     
     # Crear archivo .trusted que le dice a pacman que confíe plenamente en esta firma
-    echo "admin@romanos.org:trust" > "$pkgdir/usr/share/pacman/keyrings/roman-os.trusted"
+    echo "romanoslinux@protonmail.com:trust" > "$pkgdir/usr/share/pacman/keyrings/roman-os.trusted"
 }

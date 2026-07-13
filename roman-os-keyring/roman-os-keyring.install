@@ -4,7 +4,7 @@ post_install() {
     if [ -x usr/bin/pacman-key ]; then
         echo ">>> Inicializando llavero GPG de Roman OS en pacman..."
         pacman-key --add /usr/share/pacman/keyrings/roman-os.gpg
-        pacman-key --lsign-key admin@romanos.org
+        pacman-key --lsign-key romanoslinux@protonmail.com
     fi
 }
 

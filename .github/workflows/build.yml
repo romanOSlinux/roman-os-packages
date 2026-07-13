@@ -74,7 +74,7 @@ jobs:
             # Generar la base de datos firmada del repositorio
             echo "Generando y firmando base de datos del repositorio..."
             if [ -n "$GPG_PASSPHRASE" ]; then
-              repo-add --sign --key admin@romanos.org roman-os-packages.db.tar.gz *.pkg.tar.zst
+              repo-add --sign --key romanoslinux@protonmail.com roman-os-packages.db.tar.gz *.pkg.tar.zst
             else
               repo-add --sign roman-os-packages.db.tar.gz *.pkg.tar.zst
             fi

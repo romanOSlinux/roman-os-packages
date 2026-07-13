@@ -1,7 +1,7 @@
 # Maintainer: Roman <romanOSlinux>
 pkgname=roman-os-plymouth
 pkgver=1.0
-pkgrel=99
+pkgrel=1
 pkgdesc="Tema Plymouth sencillo para Roman OS"
 arch=('any')
 url="https://github.com/romanOSlinux/roman-os-packages"

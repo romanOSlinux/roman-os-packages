@@ -1,21 +1,29 @@
 # Maintainer: Roman <romanOSlinux>
 pkgname=roman-os-calamares-config
 pkgver=1.0
-pkgrel=99
+pkgrel=1
 pkgdesc="Configuración y branding para el instalador Calamares en roman-os"
 arch=('any')
 url="https://github.com/romanOSlinux/roman-os-packages"
 license=('GPL3')
 provides=('kiro-calamares-config' 'cachyos-calamares')
 conflicts=('kiro-calamares-config' 'cachyos-calamares')
-depends=('calamares')
+depends=('calamares' 'fish')
 source=()
 sha256sums=()
 
 package() {
     cd "$srcdir/.."
     
-    # Copiamos todo el contenido excepto los archivos de GitHub y utilidades no necesarias
-    cp -r etc "$pkgdir/" 2>/dev/null || true
-    cp -r usr "$pkgdir/" 2>/dev/null || true
+    # Instalar archivos de etc (archivos de configuración con permisos 644)
+    find etc -type f ! -name ".*" -exec install -Dm644 "{}" "$pkgdir/{}" \;
+    
+    # Instalar archivos de usr (scripts ejecutables con 755, y archivos estáticos con 644)
+    find usr -type f ! -name ".*" | while read -r file; do
+        if [[ "$file" == *.py ]] || [[ -x "$file" ]]; then
+            install -Dm755 "$file" "$pkgdir/$file"
+        else
+            install -Dm644 "$file" "$pkgdir/$file"
+        fi
+    done
 }

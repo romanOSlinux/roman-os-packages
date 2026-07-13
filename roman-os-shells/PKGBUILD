@@ -1,7 +1,7 @@
 # Maintainer: Roman <romanOSlinux>
 pkgname=roman-os-shells
 pkgver=1.0
-pkgrel=99
+pkgrel=1
 pkgdesc="Configuración de shell (bash) para roman-os — instala .bashrc por defecto en /etc/skel"
 arch=('any')
 url="https://github.com/romanOSlinux/roman-os-packages"

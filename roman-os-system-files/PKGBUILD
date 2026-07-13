@@ -1,7 +1,7 @@
 # Maintainer: Roman <romanOSlinux>
 pkgname=roman-os-system-files
 pkgver=1.0
-pkgrel=99
+pkgrel=1
 pkgdesc="Archivos base del sistema y utilidades para roman-os"
 arch=('any')
 url="https://github.com/romanOSlinux/roman-os-packages"
